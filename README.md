@@ -2,7 +2,7 @@
 
 > A standalone programmable computing environment built around the Resiris programming language.
 
-Galena is a custom programmable computing environment designed around its own programming language, **Resiris**.
+Galena is a custom programmable computing environment designed around its own programming language, **[Resiris](https://github.com/SilentDev-nocopy/Resiris.git)**.
 
 The project aims to create a small, self-contained computing device where users can write programs, compile them on a computer, transfer them to the Galena device, and run them using the Galena Runtime.
 
