@@ -51,9 +51,11 @@ Example:
 ```resiris
 v x int = 10
 
-start():
-        print_cmd(x)
+START():
+	print_cmd(x)
 ```
+
+Blocks are indented with **tabs** (spaces are rejected), and the lifecycle functions are written in **uppercase** (`START()` runs once, `PROCESS(FPS)` repeats at the `c FPS float` rate).
 
 
 
