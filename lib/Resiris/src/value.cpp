@@ -183,18 +183,8 @@ std::string shortest_double_repr(double value) {
         return value < 0.0 ? "-inf" : "inf";
     }
 
-    // printf rounds correctly, so for a given precision it emits the rendering
-    // nearest to `value` - no other candidate on that grid can be closer, which
-    // leaves one candidate per precision. A rendering is faithful when reading
-    // it back yields `value` again.
-    //
-    // The search runs past the 17 digits a double needs to round trip, because a
-    // longer yet equally long rendering still wins the length tie:
-    // 5.8187031860904178483e+20 is the exact 581870318609041784832 rather than
-    // the 21 character 581870318609041785000.
-    //
     // Ties are settled against a 25 digit rendering, which is finer than any
-    // candidate the search produces, so comparing on its grid is enough.
+    // candidate below, so comparing on its grid is enough.
     char buffer[64];
     std::snprintf(buffer, sizeof(buffer), "%.24e", value);
     const ParsedScientific reference = parse_scientific(buffer);
@@ -204,7 +194,61 @@ std::string shortest_double_repr(double value) {
 
     std::string best;
     bool have_best = false;
+    bool best_even = false;
     BigDigits best_distance;
+
+    // Offers digits * 10^(exponent - digits.size() + 1) as a candidate, keeping
+    // it only when it reads back as `value` and when it wins on length and then
+    // on distance.
+    auto offer = [&](std::string digits, int exponent, bool negative) {
+        if (digits.size() > 1 && digits.front() == '0') {
+            digits.erase(digits.begin());
+            --exponent;
+        }
+        digits = without_trailing_zeros(digits);
+
+        std::string scientific = render_scientific(digits, exponent);
+        std::string fixed = render_fixed(digits, exponent);
+        if (negative) {
+            scientific.insert(scientific.begin(), '-');
+            fixed.insert(fixed.begin(), '-');
+        }
+        if (std::strtod(scientific.c_str(), nullptr) != value) {
+            return;
+        }
+
+        const std::string text = fixed.size() <= scientific.size() ? fixed : scientific;
+
+        const int scale = exponent - (static_cast<int>(digits.size()) - 1);
+        const int common = scale < reference_scale ? scale : reference_scale;
+        const BigDigits distance = absolute_difference(
+            times_power_of_ten(to_digit_string(digits), scale - common),
+            times_power_of_ten(reference_digits, reference_scale - common));
+
+        // Fewer characters wins. On an equal length the one nearest the value
+        // wins, and an exact distance tie - the value sitting exactly between two
+        // renderings - goes to the even last digit, the way round-to-nearest
+        // resolves a halfway case.
+        const bool last_digit_even = (digits.back() - '0') % 2 == 0;
+        bool wins = !have_best || text.size() < best.size();
+        if (have_best && text.size() == best.size()) {
+            const int order = compare(distance, best_distance);
+            wins = order < 0 || (order == 0 && last_digit_even && !best_even);
+        }
+        if (wins) {
+            best = text;
+            best_distance = std::move(distance);
+            best_even = last_digit_even;
+            have_best = true;
+        }
+    };
+
+    // printf rounds to nearest, which can land just outside the range that reads
+    // back as `value`, so both neighbours on the same grid are candidates too.
+    // The search runs past the 17 digits a double needs to round trip, because a
+    // longer rendering still wins a length tie: 5.8187031860904178483e+20 is the
+    // exact 581870318609041784832 rather than the 21 character
+    // 581870318609041785000.
     for (int precision = 0; precision <= 24; ++precision) {
         // A candidate with `precision + 1` digits can never be shorter than
         // that, so nothing left to check once the best is this short already.
@@ -213,33 +257,10 @@ std::string shortest_double_repr(double value) {
         }
 
         std::snprintf(buffer, sizeof(buffer), "%.*e", precision, value);
-        if (std::strtod(buffer, nullptr) != value) {
-            continue;
-        }
-
         const ParsedScientific parsed = parse_scientific(buffer);
-        const std::string digits = without_trailing_zeros(parsed.digits);
-
-        const std::string scientific = render_scientific(digits, parsed.exponent);
-        const std::string fixed = render_fixed(digits, parsed.exponent);
-        std::string candidate =
-            fixed.size() <= scientific.size() ? fixed : scientific;
-        if (parsed.negative) {
-            candidate.insert(candidate.begin(), '-');
-        }
-
-        const int scale = parsed.exponent - (static_cast<int>(digits.size()) - 1);
-        const int common = scale < reference_scale ? scale : reference_scale;
-        const BigDigits distance = absolute_difference(
-            times_power_of_ten(to_digit_string(digits), scale - common),
-            times_power_of_ten(reference_digits, reference_scale - common));
-
-        if (!have_best || candidate.size() < best.size() ||
-            (candidate.size() == best.size() && compare(distance, best_distance) < 0)) {
-            best = std::move(candidate);
-            best_distance = std::move(distance);
-            have_best = true;
-        }
+        offer(decremented(parsed.digits), parsed.exponent, parsed.negative);
+        offer(parsed.digits, parsed.exponent, parsed.negative);
+        offer(incremented(parsed.digits), parsed.exponent, parsed.negative);
     }
 
     return best;

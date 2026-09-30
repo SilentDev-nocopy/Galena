@@ -1,12 +1,10 @@
 #include "resiris/interpreter.hpp"
 
-#include <chrono>
 #include <cmath>
-#include <iostream>
 #include <set>
-#include <thread>
 
 #include "resiris/parser.hpp"
+#include "resiris/platform.hpp"
 
 namespace resiris {
 
@@ -245,20 +243,17 @@ void Interpreter::run_process_forever() {
     }
 
     double frame_period = 1.0 / fps;
-    auto frame_period_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::duration<double>(frame_period));
-    auto next_frame = std::chrono::steady_clock::now();
+    double next_frame = monotonic_seconds();
 
     while (stop_flag_ == nullptr || *stop_flag_ == 0) {
         frame_time_ += frame_period;
         execute_lifecycle(process_lifecycle, static_cast<float>(fps));
-        next_frame += frame_period_ns;
-        auto now = std::chrono::steady_clock::now();
-        auto sleep_time = next_frame - now;
-        if (sleep_time > std::chrono::nanoseconds(0)) {
-            std::this_thread::sleep_for(sleep_time);
+        next_frame += frame_period;
+        const double sleep_time = next_frame - monotonic_seconds();
+        if (sleep_time > 0.0) {
+            sleep_seconds(sleep_time);
         } else {
-            next_frame = std::chrono::steady_clock::now();
+            next_frame = monotonic_seconds();
         }
     }
 }
@@ -508,7 +503,7 @@ void Interpreter::execute_return(const std::shared_ptr<ReturnStmt>& statement) {
 
 void Interpreter::execute_print_cmd(const std::shared_ptr<PrintCmdStmt>& statement) {
     Value value = evaluate(statement->expression);
-    std::cout << value_to_string(value) << "\n";
+    write_text(value_to_string(value) + "\n");
 }
 
 Value Interpreter::call_function(const std::string& function_name,

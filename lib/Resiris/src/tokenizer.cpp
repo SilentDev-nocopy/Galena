@@ -210,14 +210,17 @@ std::vector<Token> Tokenizer::tokenize(const std::string& source) const {
 
         if (indent > indent_stack.back()) {
             indent_stack.push_back(indent);
-            tokens.push_back(make_token(TokenType::INDENT, indent, static_cast<int>(line_no), 1));
+            tokens.push_back(make_token(
+                TokenType::INDENT, static_cast<std::int64_t>(indent),
+                static_cast<int>(line_no), 1));
         } else if (indent < indent_stack.back()) {
             while (indent < indent_stack.back()) {
                 indent_stack.pop_back();
                 // The prototype reports the target indent of the line, not the
                 // level that was just left.
                 tokens.push_back(make_token(
-                    TokenType::DEDENT, indent, static_cast<int>(line_no), 1));
+                    TokenType::DEDENT, static_cast<std::int64_t>(indent),
+                    static_cast<int>(line_no), 1));
             }
             if (indent != indent_stack.back()) {
                 throw ResirisSyntaxError(
@@ -376,7 +379,9 @@ std::vector<Token> Tokenizer::tokenize(const std::string& source) const {
     const int final_line = static_cast<int>(std::max<std::size_t>(1, lines.size()));
     while (indent_stack.size() > 1) {
         indent_stack.pop_back();
-        tokens.push_back(make_token(TokenType::DEDENT, indent_stack.back(), final_line, 1));
+        tokens.push_back(make_token(
+            TokenType::DEDENT, static_cast<std::int64_t>(indent_stack.back()),
+            final_line, 1));
     }
 
     tokens.push_back(make_token(TokenType::EOF_, std::monostate{}, final_line, 1));
