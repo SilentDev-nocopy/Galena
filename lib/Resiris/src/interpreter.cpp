@@ -6,6 +6,12 @@
 #include "resiris/parser.hpp"
 #include "resiris/platform.hpp"
 
+#if defined(__GNUC__)
+#define RESIRIS_NOINLINE __attribute__((noinline))
+#else
+#define RESIRIS_NOINLINE
+#endif
+
 namespace resiris {
 
 namespace {
@@ -506,6 +512,34 @@ void Interpreter::execute_print_cmd(const std::shared_ptr<PrintCmdStmt>& stateme
     write_text(value_to_string(value) + "\n");
 }
 
+// A4: the diagnostics below concatenate several std::strings, so they need
+// multiple temporaries alive at the same time. Built out of line so a recursive
+// frame does not have to reserve that space on every single call.
+RESIRIS_NOINLINE void Interpreter::throw_argument_count_error(
+    const std::string& label, std::size_t required, std::size_t received) {
+    throw FunctionError(
+        label + ": " + std::to_string(required) +
+        " parameters required, but " + std::to_string(received) +
+        " arguments received");
+}
+
+RESIRIS_NOINLINE void Interpreter::bind_parameters(
+    const std::string& label, const std::vector<std::string>& parameters,
+    const std::vector<Value>& arguments, Scope& out_scope) {
+    for (std::size_t i = 0; i < parameters.size(); ++i) {
+        const std::string& parameter_name = parameters[i];
+        if (out_scope.count(parameter_name) != 0) {
+            throw FunctionError(label + ": duplicate parameter name: " + parameter_name);
+        }
+        const Value& argument_value = arguments[i];
+        out_scope[parameter_name] = Variable{
+            argument_value,
+            infer_type_name(argument_value),
+            false,
+        };
+    }
+}
+
 Value Interpreter::call_function(const std::string& function_name,
                                  const std::vector<Value>& arguments) {
     auto found = functions.find(function_name);
@@ -515,33 +549,23 @@ Value Interpreter::call_function(const std::string& function_name,
     const auto& function = found->second;
 
     if (arguments.size() != function->parameters.size()) {
-        throw FunctionError(
-            function_name + ": " + std::to_string(function->parameters.size()) +
-            " parameters required, but " + std::to_string(arguments.size()) +
-            " arguments received");
+        throw_argument_count_error(function_name, function->parameters.size(),
+                                   arguments.size());
     }
 
     Scope local_scope;
-    for (std::size_t i = 0; i < function->parameters.size(); ++i) {
-        const std::string& parameter_name = function->parameters[i];
-        if (local_scope.count(parameter_name) != 0) {
-            throw FunctionError(
-                function_name + ": duplicate parameter name: " + parameter_name);
-        }
-        const Value& argument_value = arguments[i];
-        local_scope[parameter_name] = Variable{
-            argument_value,
-            infer_type_name(argument_value),
-            false,
-        };
-    }
+    bind_parameters(function_name, function->parameters, arguments, local_scope);
 
     scope_stack.push_back(std::move(local_scope));
 
     Value result;
     try {
         try {
-            execute_block(function->body);
+            // A4: execute_block added a 32 byte frame between every recursive
+            // level; its loop body is inlined here instead.
+            for (const auto& body_statement : function->body) {
+                execute(body_statement);
+            }
         } catch (const ReturnSignal& signal) {
             if (signal.value) {
                 result = std::move(*signal.value);
@@ -558,33 +582,23 @@ Value Interpreter::call_function(const std::string& function_name,
 Value Interpreter::call_function_object(const std::shared_ptr<FunctionalObject>& function,
                                         const std::vector<Value>& arguments) {
     if (arguments.size() != function->parameters.size()) {
-        throw FunctionError(
-            "FunctionalObject: " + std::to_string(function->parameters.size()) +
-            " parameters required, but " + std::to_string(arguments.size()) +
-            " arguments received");
+        throw_argument_count_error("FunctionalObject", function->parameters.size(),
+                                   arguments.size());
     }
 
     Scope local_scope;
-    for (std::size_t i = 0; i < function->parameters.size(); ++i) {
-        const std::string& parameter_name = function->parameters[i];
-        if (local_scope.count(parameter_name) != 0) {
-            throw FunctionError(
-                "FunctionalObject: duplicate parameter name: " + parameter_name);
-        }
-        const Value& argument_value = arguments[i];
-        local_scope[parameter_name] = Variable{
-            argument_value,
-            infer_type_name(argument_value),
-            false,
-        };
-    }
+    bind_parameters("FunctionalObject", function->parameters, arguments, local_scope);
 
     scope_stack.push_back(std::move(local_scope));
 
     Value result;
     try {
         try {
-            execute_block(function->body);
+            // A4: execute_block added a 32 byte frame between every recursive
+            // level; its loop body is inlined here instead.
+            for (const auto& body_statement : function->body) {
+                execute(body_statement);
+            }
         } catch (const ReturnSignal& signal) {
             if (signal.value) {
                 result = std::move(*signal.value);
@@ -618,162 +632,30 @@ Value Interpreter::call_module_object_method(const std::shared_ptr<ModuleObject>
     return result;
 }
 
+// A5: dispatch only. Each expression kind is evaluated in its own function so
+// the frame for one kind does not reserve the union of every branch's locals.
+// On ESP32 -Os the single switch used to keep four Value slots plus one
+// shared_ptr per branch reserved for the whole chain.
 Value Interpreter::evaluate(const std::shared_ptr<Expression>& expression) {
     switch (expression->kind) {
-        case ExprKind::Literal: {
-            auto literal = std::static_pointer_cast<Literal>(expression);
-            return literal->value;
-        }
-
-        case ExprKind::Name: {
-            auto name = std::static_pointer_cast<Name>(expression);
-            Variable* variable = find_variable(name->name);
-            if (variable != nullptr) {
-                return variable->value;
-            }
-            if (functions.count(name->name) != 0) {
-                return Value::make_string(name->name);
-            }
-            if (registry_->is_loaded(name->name)) {
-                return Value::make_string(name->name);
-            }
-            throw UnknownVariableError(name->name + ": unknown name");
-        }
-
-        case ExprKind::Unary: {
-            auto unary = std::static_pointer_cast<UnaryExpr>(expression);
-            Value value = evaluate(unary->operand);
-            bool is_number = value.is_number() && value.type != Value::Type::Bool;
-            if (unary->op == "+") {
-                if (!is_number) {
-                    throw ResirisTypeError(
-                        "unary + can only be used with numbers: " + value_repr(value));
-                }
-                return value;
-            }
-            if (unary->op == "-") {
-                if (!is_number) {
-                    throw ResirisTypeError(
-                        "unary - can only be used with numbers: " + value_repr(value));
-                }
-                return negate_value(value);
-            }
-            throw ResirisError("Unknown unary operator: " + unary->op);
-        }
-
-        case ExprKind::Binary: {
-            auto binary = std::static_pointer_cast<BinaryExpr>(expression);
-            Value left = evaluate(binary->left);
-            Value right = evaluate(binary->right);
-            return apply_binary(std::move(left), binary->op, std::move(right), "");
-        }
-
-        case ExprKind::TypeConversion: {
-            auto conversion = std::static_pointer_cast<TypeConversionExpr>(expression);
-            Value value = evaluate(conversion->value);
-            return convert_type(std::move(value), conversion->target_type);
-        }
-
-        case ExprKind::Call: {
-            auto call = std::static_pointer_cast<CallExpr>(expression);
-            std::vector<Value> arguments;
-            arguments.reserve(call->arguments.size());
-            for (const auto& argument : call->arguments) {
-                arguments.push_back(evaluate(argument));
-            }
-
-            if (call->function->kind == ExprKind::ModuleAccess) {
-                auto access = std::static_pointer_cast<ModuleAccessExpr>(call->function);
-                Variable* variable = find_variable(access->module_name);
-                if (variable != nullptr &&
-                    variable->value.type == Value::Type::ModuleObject) {
-                    return call_module_object_method(
-                        variable->value.module_value, access->member_name, arguments);
-                }
-                return registry_->call_function(
-                    access->module_name, access->member_name, arguments);
-            }
-
-            if (call->function->kind == ExprKind::ObjectAccess) {
-                auto access = std::static_pointer_cast<ObjectAccessExpr>(call->function);
-                Value target = evaluate(access->target);
-                if (target.type != Value::Type::ModuleObject) {
-                    throw ResirisTypeError(
-                        "object method calls require a ModuleObject value");
-                }
-                return call_module_object_method(
-                    target.module_value, access->member_name, arguments);
-            }
-
-            if (call->function->kind == ExprKind::Name) {
-                auto name = std::static_pointer_cast<Name>(call->function);
-                const std::string& function_name = name->name;
-
-                if (function_name == "str") {
-                    if (arguments.size() != 1) {
-                        throw FunctionError(
-                            "str: 1 argument required, but " +
-                            std::to_string(arguments.size()) + " arguments received");
-                    }
-                    return Value::make_string(value_to_string(arguments[0]));
-                }
-
-                Variable* variable = find_variable(function_name);
-                if (variable != nullptr &&
-                    variable->value.type == Value::Type::FunctionalObject) {
-                    return call_function_object(
-                        variable->value.function_value, arguments);
-                }
-
-                return call_function(function_name, arguments);
-            }
-
-            throw FunctionError(
-                "the function call target must currently be a name or FunctionalObject");
-        }
-
-        case ExprKind::ModuleAccess: {
-            auto access = std::static_pointer_cast<ModuleAccessExpr>(expression);
-            Variable* variable = find_variable(access->module_name);
-            if (variable != nullptr &&
-                variable->value.type == Value::Type::ModuleObject) {
-                return call_module_object_method(
-                    variable->value.module_value, access->member_name, {});
-            }
-
-            if (registry_->is_loaded(access->module_name)) {
-                try {
-                    if (registry_->has_function(access->module_name, access->member_name)) {
-                        return registry_->call_function(
-                            access->module_name, access->member_name, {});
-                    }
-                } catch (const ModuleError&) {
-                    // fall through to the "only valid for function calls" error
-                }
-            }
-
-            throw ResirisError("module `.` access is only valid for function calls");
-        }
-
-        case ExprKind::ObjectAccess: {
-            auto access = std::static_pointer_cast<ObjectAccessExpr>(expression);
-            Value target = evaluate(access->target);
-            if (target.type != Value::Type::ModuleObject) {
-                throw ResirisTypeError("object member access requires a ModuleObject value");
-            }
-            return call_module_object_method(
-                target.module_value, access->member_name, {});
-        }
-
-        case ExprKind::ModuleConstantAccess: {
-            auto access = std::static_pointer_cast<ModuleConstantAccessExpr>(expression);
-            try {
-                return registry_->get_constant(access->module_name, access->constant_name);
-            } catch (const ModuleError& error) {
-                throw ResirisError(error.what());
-            }
-        }
-
+        case ExprKind::Literal:
+            return evaluate_literal(expression);
+        case ExprKind::Name:
+            return evaluate_name(expression);
+        case ExprKind::Unary:
+            return evaluate_unary(expression);
+        case ExprKind::Binary:
+            return evaluate_binary(expression);
+        case ExprKind::TypeConversion:
+            return evaluate_type_conversion(expression);
+        case ExprKind::Call:
+            return evaluate_call(expression);
+        case ExprKind::ModuleAccess:
+            return evaluate_module_access(expression);
+        case ExprKind::ObjectAccess:
+            return evaluate_object_access(expression);
+        case ExprKind::ModuleConstantAccess:
+            return evaluate_module_constant_access(expression);
         case ExprKind::FunctionalObjectDef:
             break;
     }
@@ -781,6 +663,168 @@ Value Interpreter::evaluate(const std::shared_ptr<Expression>& expression) {
     throw ResirisError(
         "The current interpreter version does not recognize this expression: " +
         std::string(expression_kind_name(expression->kind)));
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_literal(
+    const std::shared_ptr<Expression>& expression) {
+    return std::static_pointer_cast<Literal>(expression)->value;
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_name(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& name = std::static_pointer_cast<Name>(expression)->name;
+    Variable* variable = find_variable(name);
+    if (variable != nullptr) {
+        return variable->value;
+    }
+    if (functions.count(name) != 0) {
+        return Value::make_string(name);
+    }
+    if (registry_->is_loaded(name)) {
+        return Value::make_string(name);
+    }
+    throw UnknownVariableError(name + ": unknown name");
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_unary(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& unary = std::static_pointer_cast<UnaryExpr>(expression);
+    Value value = evaluate(unary->operand);
+    bool is_number = value.is_number() && value.type != Value::Type::Bool;
+    if (unary->op == "+") {
+        if (!is_number) {
+            throw ResirisTypeError(
+                "unary + can only be used with numbers: " + value_repr(value));
+        }
+        return value;
+    }
+    if (unary->op == "-") {
+        if (!is_number) {
+            throw ResirisTypeError(
+                "unary - can only be used with numbers: " + value_repr(value));
+        }
+        return negate_value(value);
+    }
+    throw ResirisError("Unknown unary operator: " + unary->op);
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_binary(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& binary = std::static_pointer_cast<BinaryExpr>(expression);
+    Value left = evaluate(binary->left);
+    Value right = evaluate(binary->right);
+    return apply_binary(std::move(left), binary->op, std::move(right), "");
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_type_conversion(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& conversion =
+        std::static_pointer_cast<TypeConversionExpr>(expression);
+    return convert_type(evaluate(conversion->value), conversion->target_type);
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_call(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& call = std::static_pointer_cast<CallExpr>(expression);
+    std::vector<Value> arguments;
+    arguments.reserve(call->arguments.size());
+    for (const auto& argument : call->arguments) {
+        arguments.push_back(evaluate(argument));
+    }
+
+    if (call->function->kind == ExprKind::ModuleAccess) {
+        const auto& access =
+            std::static_pointer_cast<ModuleAccessExpr>(call->function);
+        Variable* variable = find_variable(access->module_name);
+        if (variable != nullptr && variable->value.type == Value::Type::ModuleObject) {
+            return call_module_object_method(
+                variable->value.module_value, access->member_name, arguments);
+        }
+        return registry_->call_function(
+            access->module_name, access->member_name, arguments);
+    }
+
+    if (call->function->kind == ExprKind::ObjectAccess) {
+        const auto& access = std::static_pointer_cast<ObjectAccessExpr>(call->function);
+        Value target = evaluate(access->target);
+        if (target.type != Value::Type::ModuleObject) {
+            throw ResirisTypeError(
+                "object method calls require a ModuleObject value");
+        }
+        return call_module_object_method(
+            target.module_value, access->member_name, arguments);
+    }
+
+    if (call->function->kind == ExprKind::Name) {
+        const auto& function_name =
+            std::static_pointer_cast<Name>(call->function)->name;
+
+        if (function_name == "str") {
+            if (arguments.size() != 1) {
+                throw FunctionError(
+                    "str: 1 argument required, but " +
+                    std::to_string(arguments.size()) + " arguments received");
+            }
+            return Value::make_string(value_to_string(arguments[0]));
+        }
+
+        Variable* variable = find_variable(function_name);
+        if (variable != nullptr &&
+            variable->value.type == Value::Type::FunctionalObject) {
+            return call_function_object(variable->value.function_value, arguments);
+        }
+
+        return call_function(function_name, arguments);
+    }
+
+    throw FunctionError(
+        "the function call target must currently be a name or FunctionalObject");
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_module_access(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& access = std::static_pointer_cast<ModuleAccessExpr>(expression);
+    Variable* variable = find_variable(access->module_name);
+    if (variable != nullptr &&
+        variable->value.type == Value::Type::ModuleObject) {
+        return call_module_object_method(
+            variable->value.module_value, access->member_name, {});
+    }
+
+    if (registry_->is_loaded(access->module_name)) {
+        try {
+            if (registry_->has_function(access->module_name, access->member_name)) {
+                return registry_->call_function(
+                    access->module_name, access->member_name, {});
+            }
+        } catch (const ModuleError&) {
+            // fall through to the "only valid for function calls" error
+        }
+    }
+
+    throw ResirisError("module `.` access is only valid for function calls");
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_object_access(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& access = std::static_pointer_cast<ObjectAccessExpr>(expression);
+    Value target = evaluate(access->target);
+    if (target.type != Value::Type::ModuleObject) {
+        throw ResirisTypeError("object member access requires a ModuleObject value");
+    }
+    return call_module_object_method(
+        target.module_value, access->member_name, {});
+}
+
+RESIRIS_NOINLINE Value Interpreter::evaluate_module_constant_access(
+    const std::shared_ptr<Expression>& expression) {
+    const auto& access =
+        std::static_pointer_cast<ModuleConstantAccessExpr>(expression);
+    try {
+        return registry_->get_constant(access->module_name, access->constant_name);
+    } catch (const ModuleError& error) {
+        throw ResirisError(error.what());
+    }
 }
 
 Value Interpreter::apply_binary(Value left, const std::string& op, Value right,

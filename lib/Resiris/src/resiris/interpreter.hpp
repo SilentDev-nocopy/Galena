@@ -64,7 +64,18 @@ private:
     void execute_return(const std::shared_ptr<ReturnStmt>& statement);
     void execute_print_cmd(const std::shared_ptr<PrintCmdStmt>& statement);
 
-    Value call_function(const std::string& function_name, const std::vector<Value>& arguments);
+    Value call_function(const std::string& function_name,
+                        const std::vector<Value>& arguments);
+
+    // A4: kept out of line so their string temporaries are not part of the
+    // recursive call frame.
+    static void throw_argument_count_error(const std::string& label,
+                                           std::size_t required,
+                                           std::size_t received);
+    void bind_parameters(const std::string& label,
+                         const std::vector<std::string>& parameters,
+                         const std::vector<Value>& arguments,
+                         Scope& out_scope);
     Value call_function_object(const std::shared_ptr<FunctionalObject>& function,
                                const std::vector<Value>& arguments);
     Value call_module_object_method(const std::shared_ptr<ModuleObject>& object,
@@ -72,6 +83,20 @@ private:
                                     const std::vector<Value>& arguments);
 
     Value evaluate(const std::shared_ptr<Expression>& expression);
+
+    // A5: one function per expression kind, so a single kind does not reserve
+    // the union of every branch's locals in the dispatch frame.
+    Value evaluate_literal(const std::shared_ptr<Expression>& expression);
+    Value evaluate_name(const std::shared_ptr<Expression>& expression);
+    Value evaluate_unary(const std::shared_ptr<Expression>& expression);
+    Value evaluate_binary(const std::shared_ptr<Expression>& expression);
+    Value evaluate_type_conversion(const std::shared_ptr<Expression>& expression);
+    Value evaluate_call(const std::shared_ptr<Expression>& expression);
+    Value evaluate_module_access(const std::shared_ptr<Expression>& expression);
+    Value evaluate_object_access(const std::shared_ptr<Expression>& expression);
+    Value evaluate_module_constant_access(
+        const std::shared_ptr<Expression>& expression);
+
     Value apply_binary(Value left, const std::string& op, Value right,
                        const std::string& target_name);
     Value convert_type(Value value, const std::optional<std::string>& target_type);
