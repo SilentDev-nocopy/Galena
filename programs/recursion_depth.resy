@@ -1,0 +1,16 @@
+fn descend(n):
+	if n <= 0:
+		return 0
+	print_cmd(n)
+	return descend(n - 1)
+
+fn probe(depth):
+	print_cmd(depth)
+	return descend(depth)
+
+probe(1)
+probe(2)
+probe(3)
+probe(4)
+probe(5)
+print_cmd("done")

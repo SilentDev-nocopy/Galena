@@ -156,6 +156,26 @@ fn timer_callback():
 	print_cmd("timer callback fired")
 )RESY";
 
+// programs/recursion_depth.resy
+constexpr const char* recursion_depth_resy =
+R"RESY(fn descend(n):
+	if n <= 0:
+		return 0
+	print_cmd(n)
+	return descend(n - 1)
+
+fn probe(depth):
+	print_cmd(depth)
+	return descend(depth)
+
+probe(1)
+probe(2)
+probe(3)
+probe(4)
+probe(5)
+print_cmd("done")
+)RESY";
+
 // programs/test.resy
 constexpr const char* test_resy =
 R"RESY(v x int = 10
@@ -172,10 +192,11 @@ struct ResyProgram {
 
 constexpr ResyProgram kResyPrograms[] = {
     {"programs/features.resy", "features", features_resy},
+    {"programs/recursion_depth.resy", "recursion_depth", recursion_depth_resy},
     {"programs/test.resy", "test", test_resy},
 };
 
-constexpr int kResyProgramCount = 2;
+constexpr int kResyProgramCount = 3;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {
