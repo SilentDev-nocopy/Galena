@@ -1,0 +1,4 @@
+v x int = 10
+v y int = 20
+v result int = x + y
+print_cmd(result)
