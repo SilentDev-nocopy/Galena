@@ -68,11 +68,6 @@ print_cmd(dec)
 dec /= 2.0
 print_cmd(dec)
 
-fn fib(n):
-	if n <= 1:
-		return n
-	return fib(n - 2) + fib(n - 1)
-
 fn classify(val):
 	if val.type() == "int":
 		return "int value"
@@ -94,7 +89,6 @@ fn describe(n):
 		else:
 			return "many"
 
-print_cmd(fib(10))
 print_cmd(classify(a))
 print_cmd(classify(x))
 print_cmd(classify(flag))

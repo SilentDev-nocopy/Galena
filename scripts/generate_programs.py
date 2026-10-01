@@ -5,12 +5,19 @@ Runs as a PlatformIO pre-build script (see `extra_scripts` in platformio.ini).
 Each .resy file becomes a C++ raw-string literal so the source is embedded into
 the firmware at build time, no filesystem involved.
 
-The header is only rewritten when its content actually changes, so an
+Before every build the program to run is chosen interactively and the choice is
+written into the single `const char* source = ...;` line of src/main.cpp. Only
+that identifier changes; the .resy sources stay in their own files.
+
+The generated files are only rewritten when their content actually changes, so an
 unchanged programs/ folder does not trigger recompilation.
+
+Pass --no-select to regenerate the header without touching main.cpp.
 """
 
 import os
 import re
+import sys
 
 
 def project_root():
@@ -31,6 +38,19 @@ def programs_dir(root):
 
 def output_path(root):
     return os.path.join(root, "src", "generated_programs.hpp")
+
+
+def main_cpp_path(root):
+    return os.path.join(root, "src", "main.cpp")
+
+
+# The one line in src/main.cpp that picks the program to run. Only the
+# identifier between `=` and `;` is ever rewritten.
+SELECTION_RE = re.compile(
+    r"^(?P<prefix>[ \t]*const[ \t]+char[ \t]*\*[ \t]*source[ \t]*=[ \t]*)"
+    r"(?P<identifier>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?P<suffix>[ \t]*;[ \t]*)$",
+    re.MULTILINE)
 
 
 def sanitized_identifier(stem):
@@ -131,26 +151,127 @@ def build_header(programs):
     return "\n".join(lines)
 
 
-def main():
-    root = project_root()
-    programs = load_programs(root)
-    header = build_header(programs)
-    destination = output_path(root)
-
+def write_header(destination, header):
     try:
         existing = open(destination, "r", encoding="utf-8").read()
     except OSError:
         existing = None
 
     if existing == header:
-        print("generate_programs: {} up to date ({} programs)".format(
-            destination, len(programs)))
+        print("generate_programs: {} up to date".format(destination))
         return
 
     with open(destination, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(header)
     print("generate_programs: {} programs -> {}".format(
-        len(programs), destination))
+        header.count("constexpr const char* "), destination))
+
+
+def select_program(programs):
+    """Asks which .resy program this build should run. Always asks."""
+    print("")
+    print("Build Resiris program")
+    print("")
+    print("Available Resiris programs:")
+    print("")
+    for number, program in enumerate(programs, 1):
+        print("  {}. {}".format(number, program["file"]))
+    print("")
+
+    last = len(programs)
+    while True:
+        try:
+            answer = input("Select program to run (1-{}): ".format(last))
+        except EOFError:
+            print("")
+            print("generate_programs: ERROR: no answer on stdin, but the "
+                  "program must be selected for every build.")
+            print("  Run the build from an interactive terminal.")
+            sys.exit(1)
+
+        answer = answer.strip()
+        if answer.isdigit() and 1 <= int(answer) <= last:
+            return programs[int(answer) - 1]
+
+        if answer.isdigit():
+            print("  '{}' is out of range, pick 1-{}.".format(answer, last))
+        else:
+            print("  '{}' is not a number, pick 1-{}.".format(answer, last))
+
+
+def current_selection(root):
+    """The identifier src/main.cpp currently selects, or None."""
+    try:
+        with open(main_cpp_path(root), "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError:
+        return None
+    match = SELECTION_RE.search(content)
+    return match.group("identifier") if match else None
+
+
+def keep_current_selection(root, programs):
+    """Program matching main.cpp's current selection (used by --no-select)."""
+    identifier = current_selection(root)
+    for program in programs:
+        if program["identifier"] == identifier:
+            return program
+    return programs[0]
+
+
+def update_main_selection(root, program):
+    """Rewrites only the identifier on the `const char* source = ...;` line."""
+    path = main_cpp_path(root)
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            content = handle.read()
+    except OSError as error:
+        print("generate_programs: ERROR: cannot read {}: {}".format(path, error))
+        sys.exit(1)
+
+    matches = list(SELECTION_RE.finditer(content))
+    if len(matches) != 1:
+        print("generate_programs: ERROR: expected exactly one "
+              "`const char* source = <program>;` line in {}, found {}.".format(
+                  path, len(matches)))
+        sys.exit(1)
+
+    match = matches[0]
+    identifier = program["identifier"]
+    if match.group("identifier") == identifier:
+        print("generate_programs: main.cpp already selects {} ({})".format(
+            program["path"], identifier))
+        return
+
+    updated = content[:match.start("identifier")] + identifier + \
+        content[match.end("identifier"):]
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(updated)
+    print("generate_programs: main.cpp program -> {} ({})".format(
+        program["path"], identifier))
+
+
+def main():
+    root = project_root()
+    programs = load_programs(root)
+
+    if not programs:
+        print("generate_programs: ERROR: no .resy files in {}".format(
+            programs_dir(root)))
+        print("  Add at least one .resy program, then build again.")
+        sys.exit(1)
+
+    print("generate_programs: {} program(s) found in {}".format(
+        len(programs), programs_dir(root)))
+
+    if "--no-select" in sys.argv:
+        program = keep_current_selection(root, programs)
+        print("generate_programs: --no-select, keeping {}".format(program["path"]))
+    else:
+        program = select_program(programs)
+
+    write_header(output_path(root), build_header(programs))
+    update_main_selection(root, program)
 
 
 # PlatformIO executes extra scripts by importing them, so main() must run at

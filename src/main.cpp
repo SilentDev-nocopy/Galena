@@ -32,7 +32,7 @@ void setup() {
 
     // A futtatandó Resiris program kiválasztása (build-time, a programs/*.resy
     // alapján; másik .resy programhoz itt az azonosítóját kell megadni).
-    const char* source = test_resy;
+    const char* source = features_resy;
 
     Serial.print("Galena: ");
     Serial.println(resy_program_name(source));
