@@ -38,7 +38,7 @@ becomes a module rather than a change to the language.
 | `resiris/value.hpp` | `Value`, `ModuleObject`, `FrameAwareState` |
 | `rsmath.hpp` / `rsmath.cpp` | `RsMathModule`, the simplest real module |
 | `rsbase.hpp` / `rsbase.cpp` | `RsBaseModule`, a stateful module with object handles |
-| `src/main.cpp` | Registers the modules for the device build |
+| `galena_runtime.cpp` | Registers the modules; both build targets call it, so a module added here is available on the ESP32 and on a PC alike |
 
 There are two module implementations today. Both sit in the library root rather
 than under `resiris/`, because they are product features rather than language
@@ -314,7 +314,7 @@ Value TutorialModule::get_constant(const std::string& name) const {
 
 ### Registering it
 
-A module does nothing until the registry knows about it, in `src/main.cpp`:
+A module does nothing until the registry knows about it, in `lib/GalenaRuntime/src/galena_runtime.cpp`:
 
 ```cpp
 #include "tutorial.hpp"

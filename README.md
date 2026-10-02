@@ -34,17 +34,47 @@ pio device monitor     # 115200 baud
 ```
 
 Before each build, `scripts/generate_programs.py` regenerates
-`src/generated_programs.hpp` from `programs/*.resy` and asks which program the
+`lib/GalenaRuntime/src/generated_programs.hpp` from `programs/*.resy` and asks which
+program the
 build should run. Whichever answer you give, the script rewrites the single
-`const char* source = ...;` line in `src/main.cpp`.
+`const char* source = ...;` line in `esp32/main.cpp`.
 
 Two things follow from that. The build has to run from an interactive terminal,
-since the script exits with an error on EOF. And `src/generated_programs.hpp`
-together with that one line of `src/main.cpp` are build artifacts, so seeing them
+since the script exits with an error on EOF. And
+`lib/GalenaRuntime/src/generated_programs.hpp` together with that one line of
+`esp32/main.cpp` are build artifacts, so seeing them
 modified in `git status` usually means a build picked a different program rather
 than that the source changed.
 
 Pass `--no-select` to regenerate the header without touching `main.cpp`.
+
+### Running on a PC
+
+The same interpreter runs on a desktop, so a program can be developed and
+debugged without hardware:
+
+```bash
+make                          # build build/galena
+make run FILE=programs/features.resy   # run any .resy file
+make embedded                 # run exactly what the current device build runs
+make test                     # run every programs/*.resy
+```
+
+Both targets share one pipeline, `galena::run_program` in
+`lib/GalenaRuntime/src/galena_runtime.cpp`, and compile the same `lib/Resiris`
+sources. The only
+difference between them is the installed text sink: stdout on a host, the serial
+port on the device. `make embedded` reads the `const char* source = ...;` line
+out of `esp32/main.cpp`, so it cannot drift from the firmware. The number of
+`PROCESS()` lifecycle frames defaults to 6 on both, and `--frames N` overrides
+it.
+
+Exit codes are 0 for success, 1 when the program raised, 2 for a usage error.
+
+`--frames` exists because the ESP32 build hard-codes six frames: a program with
+no `PROCESS` block behaves the same at any count, but a timer-driven one needs
+more frames to see its callbacks fire. Raise it when iterating on a program
+whose timers you want to watch repeatedly.
 
 ## The language
 
@@ -118,7 +148,7 @@ The intended stack, from user program down to hardware:
 
 The top two layers are real. The runtime is an AST interpreter rather than the
 bytecode VM planned for later, and the Galena System layer has not been started.
-There is no designed firmware layer yet either; `src/main.cpp` is an Arduino
+There is no designed firmware layer yet either; `esp32/main.cpp` is an Arduino
 sketch that boots the interpreter and runs one embedded program, which is
 scaffolding rather than the intended system. Hardware is a generic
 ESP32-DevKitC for now.
@@ -133,19 +163,30 @@ None of those steps exist yet.
 Galena/
 ├── README.md
 ├── LICENSE
-├── platformio.ini          # esp32dev / Arduino, C++17
+├── platformio.ini          # esp32dev / Arduino, C++17, src_dir = esp32
+├── Makefile                # a PC build
+├── esp32/
+│   └── main.cpp            # az eszköz belépési pontja
+├── pc/
+│   └── main.cpp            # a PC belépési pontja
 ├── scripts/
 │   └── generate_programs.py # embeds programs/*.resy into a C++ header
-├── src/
-│   ├── main.cpp            # device entry point
-│   └── generated_programs.hpp  # generated, do not edit
 ├── programs/               # the .resy programs that can be built and run
 └── lib/
+    ├── GalenaRuntime/      # the run pipeline both targets share
+    │   └── src/
+    │       ├── galena_runtime.{hpp,cpp}
+    │       └── generated_programs.hpp  # generated, do not edit
     └── Resiris/            # vendored copy of Resiris
         ├── README.md
         ├── HOW_TO_USE.md
         └── WRITING_MODULES.md
 ```
+
+`esp32/` and `pc/` are the two build targets, and each holds only its own entry
+point. Everything they share sits in `lib/` as a library, which PlatformIO
+compiles into the firmware on its own. `platformio.ini` sets `src_dir = esp32`,
+so there is no `src/` directory at all.
 
 `lib/Resiris` is vendored directly into this repository rather than pulled in as
 a submodule.

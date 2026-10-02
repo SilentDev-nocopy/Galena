@@ -1,19 +1,12 @@
 #include <Arduino.h>
 
-#include <memory>
 #include <string>
-#include <vector>
 
+#include "galena_runtime.hpp"
 #include "generated_programs.hpp"
-#include "resiris/interpreter.hpp"
-#include "resiris/parser.hpp"
 #include "resiris/platform.hpp"
-#include "resiris/rsbase.hpp"
-#include "resiris/rsmath.hpp"
-#include "resiris/tokenizer.hpp"
 
 using namespace resiris;
-using namespace resiris_programs;
 
 namespace {
 
@@ -28,49 +21,20 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
 
-    set_text_sink(serial_sink);
+    resiris::set_text_sink(serial_sink);
 
-    // A futtatandó Resiris program kiválasztása (build-time, a programs/*.resy
-    // alapján; másik .resy programhoz itt az azonosítóját kell megadni).
-    const char* source = recursion_depth_resy;
+    // The Resiris program to run, chosen at build time from programs/*.resy. To
+    // run a different one, name its identifier here. scripts/generate_programs.py
+    // rewrites this line, and the host's --embedded mode reads it back.
+    const char* source = resiris_programs::features_resy;
 
-    Serial.print("Galena: ");
-    Serial.println(resy_program_name(source));
+    galena::run_program(source, galena::RunOptions{
+                                   .label =
+                                       resiris_programs::resy_program_name(source),
+                                   .process_frames = 6,
+                               });
 
-    try {
-        // Resiris modulok
-        auto modules = std::vector<std::shared_ptr<Module>>{
-            std::make_shared<RsBaseModule>(),
-            std::make_shared<RsMathModule>()
-        };
-
-        auto registry =
-            std::make_shared<ModuleRegistry>(std::move(modules));
-
-        // Tokenizálás
-        Tokenizer tokenizer;
-        auto tokens = tokenizer.tokenize(source);
-
-        // Parser -> AST
-        Parser parser(std::move(tokens));
-        Program program = parser.parse();
-
-        // Interpreter
-        Interpreter interpreter(registry);
-        interpreter.run(program);
-
-        // A PROCESS() lifecycle-et és a timereket is futtatja; a test.resy
-        // programnak nincs PROCESS blokkja, ezért ez nála nem csinál semmit.
-        interpreter.run_process_frames(6);
-
-        Serial.println("Resiris: OK");
-    }
-    catch (const std::exception& error) {
-        Serial.print("Resiris error: ");
-        Serial.println(error.what());
-    }
-
-    set_text_sink(nullptr);
+    resiris::set_text_sink(nullptr);
 }
 
 void loop() {
