@@ -205,9 +205,10 @@ from inside another function cannot see the caller's locals.
 ```resiris
 fn make():
 	v hidden int = 1
-	return FunctionalObject.new():
+	v increment FunctionalObject = FunctionalObject.new():
 		hidden += 1      ## UnknownVariableError
 		return hidden
+	return increment
 ```
 
 In practice this means a `FunctionalObject` can only reach its own parameters
@@ -318,6 +319,10 @@ which is the language's only source of deferred work.
 | `stop_timer()` | Pause |
 | `free_timer()` | Release the handle |
 | `process()` | Poll it; reports whether it fired |
+
+`process()` is not optional: it advances the handle's clock, so a timer that is
+never polled never fires. Call it once per `PROCESS` block for every handle whose
+timers should keep running.
 
 ```resiris
 v timer ModuleObject = RSBase.await()

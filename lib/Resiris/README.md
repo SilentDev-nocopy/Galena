@@ -52,6 +52,8 @@ Event-driven and periodic device automation: read an input, compute something,
 drive an output, react to a timer.
 
 ```resiris
+<include> RSBase
+
 c FPS float = 4.0
 
 v led ModuleObject = RSBase.await()
@@ -63,7 +65,8 @@ START():
 
 PROCESS(FPS):
 	ticks += 1
-	print_cmd("tick ", ticks)
+	print_cmd(ticks)
+	print_cmd(led.process())
 
 fn blink():
 	print_cmd("blink")
@@ -151,9 +154,10 @@ v counter FunctionalObject = FunctionalObject.new():
 
 fn make():
 	v hidden int = 1
-	return FunctionalObject.new():
+	v increment FunctionalObject = FunctionalObject.new():
 		hidden += 1   ## UnknownVariableError
 		return hidden
+	return increment
 ```
 
 A `FunctionalObject` holds its parameters and its body; free names are looked up
