@@ -1,18 +1,101 @@
 # Galena
 
-> A standalone programmable computing environment built around the Resiris programming language.
+> A standalone programmable computing environment built around the Resiris
+> programming language.
 
-Galena is a custom programmable computing environment designed around its own programming language, **[Resiris](https://github.com/SilentDev-nocopy/Resiris.git)**.
+Galena is an attempt to build a complete computing environment from the ground
+up, with the hardware, system software, runtime and programming language
+designed together. User programs never touch the ESP32 hardware directly.
 
-The project aims to create a small, self-contained computing device where users can write programs, compile them on a computer, transfer them to the Galena device, and run them using the Galena Runtime.
+## Where the project stands
 
-Galena is not intended to be a general-purpose operating system or an Arduino-like development platform. It is a dedicated computing environment designed around its own language, runtime, system and hardware.
+The work so far is the language and its runtime. The tokenizer, parser and
+interpreter run on the ESP32, along with two built-in modules. The rest of the
+plan does not exist yet.
 
----
+| Piece | State |
+|---|---|
+| Resiris tokenizer, parser, interpreter | implemented, runs on the device |
+| `RSMath` module — 29 math functions, `PI`, `E` | implemented |
+| `RSBase` module — 7 timer functions | implemented |
+| Build-time embedding of `programs/*.resy` | implemented |
+| Resiris compiler and bytecode | not started |
+| Galena System — UI, display, input, storage | not started |
+| Custom hardware | not started |
 
-## What is Galena?
+Programs are interpreted from source on the ESP32 at boot. There is no compiler
+and no bytecode yet; moving to a bytecode VM is the planned direction.
 
-Galena is the complete environment in which Resiris programs are developed and executed. It consists of several layers, from the hardware up to the programs that run on it:
+## Building and running
+
+```bash
+pio run -t upload      # build and flash
+pio device monitor     # 115200 baud
+```
+
+Before each build, `scripts/generate_programs.py` regenerates
+`src/generated_programs.hpp` from `programs/*.resy` and asks which program the
+build should run. Whichever answer you give, the script rewrites the single
+`const char* source = ...;` line in `src/main.cpp`.
+
+Two things follow from that. The build has to run from an interactive terminal,
+since the script exits with an error on EOF. And `src/generated_programs.hpp`
+together with that one line of `src/main.cpp` are build artifacts, so seeing them
+modified in `git status` usually means a build picked a different program rather
+than that the source changed.
+
+Pass `--no-select` to regenerate the header without touching `main.cpp`.
+
+## The language
+
+Resiris is the language designed for this environment: small, and aimed at
+event-driven and periodic device automation. Its syntax is Python-like, with
+declaration keywords from C and lifecycle blocks from GDScript.
+
+```resiris
+c FPS float = 10.0
+
+v x int = 10
+
+fn bump(n):
+	return n + 1
+
+START():
+	print_cmd(bump(x))
+
+PROCESS(FPS):
+	print_cmd("tick")
+```
+
+The constraint that shapes everything else: there is no loop construct and no
+array type. Repetition comes from `PROCESS(FPS)`, which re-enters its block on
+each frame without growing the interpreter's stack, or from recursion, which
+reaches about five or six levels on an ESP32. That makes Resiris well suited to
+describing what a device does, and unable to express iteration, so anything that
+has to walk a collection, sort, search or parse belongs in a module.
+
+- [lib/Resiris/README.md](lib/Resiris/README.md) — the language itself: what it
+  is good at, what it cannot do, and the decisions that make it behave
+  differently from C or Python.
+- [lib/Resiris/HOW_TO_USE.md](lib/Resiris/HOW_TO_USE.md) — the full reference,
+  covering every type and statement, scoping, both modules, and the error model.
+- [lib/Resiris/WRITING_MODULES.md](lib/Resiris/WRITING_MODULES.md) — writing a
+  module in C++.
+
+The language is also maintained separately at
+<https://github.com/SilentDev-nocopy/Resiris.git>.
+
+### Programs in this repository
+
+| File | Purpose |
+|---|---|
+| `programs/features.resy` | language self-test: types, operators, `mat`, closures, lifecycle, and 27 of the 29 `RSMath` functions |
+| `programs/test.resy` | minimal smoke test |
+| `programs/recursion_depth.resy` | recursion-depth regression test guarding the per-frame stack cost |
+
+## Architecture
+
+The intended stack, from user program down to hardware:
 
 ```text
 ┌─────────────────────────────────────┐
@@ -33,221 +116,56 @@ Galena is the complete environment in which Resiris programs are developed and e
 └─────────────────────────────────────┘
 ```
 
-The first implementation of Galena is planned as a custom ESP32-based programmable scientific calculator.
+The top two layers are real. The runtime is an AST interpreter rather than the
+bytecode VM planned for later, and the Galena System layer has not been started.
+There is no designed firmware layer yet either; `src/main.cpp` is an Arduino
+sketch that boots the interpreter and runs one embedded program, which is
+scaffolding rather than the intended system. Hardware is a generic
+ESP32-DevKitC for now.
 
----
+The long-term flow is write, compile, transfer, run: compiled programs would be
+transferred over USB or Wi-Fi, stored on the device and selected at runtime.
+None of those steps exist yet.
 
-## Resiris
-
-**Resiris** is the programming language designed for Galena.
-
-**Resiris repository:**
-https://github.com/SilentDev-nocopy/Resiris.git
-
-It is intended to have a simple, readable syntax inspired by languages such as Python, C and GDScript, while being designed specifically for the Galena environment.
-
-Example:
-
-```resiris
-v x int = 10
-
-START():
-	print_cmd(x)
-```
-
-Blocks are indented with **tabs** (spaces are rejected), and the lifecycle functions are written in **uppercase** (`START()` runs once, `PROCESS(FPS)` repeats at the `c FPS float` rate).
-
-
-
----
-
-## How it works
-
-The intended development and execution flow is:
-
-```text
-             DEVELOPMENT PC
-                  │
-                  ▼
-          ┌───────────────┐
-          │  main.resy    │
-          │ Resiris code  │
-          └───────┬───────┘
-                  │
-                  ▼
-          ┌───────────────┐
-          │    Resiris    │
-          │    Compiler   │
-          └───────┬───────┘
-                  │
-                  ▼
-          ┌───────────────┐
-          │   Resiris     │
-          │    Bytecode   │
-          └───────┬───────┘
-                  │
-             USB / Wi-Fi
-                  │
-                  ▼
-              GALENA
-          ┌───────────────┐
-          │    Storage    │
-          │               │
-          │  Programs     │
-          └───────┬───────┘
-                  │
-            User selects
-              a program
-                  │
-                  ▼
-          ┌───────────────┐
-          │    Galena     │
-          │    Runtime    │
-          └───────┬───────┘
-                  │
-                  ▼
-          ┌───────────────┐
-          │ Galena System │
-          └───────┬───────┘
-                  │
-                  ▼
-             ESP32 Hardware
-```
-
-In simple terms:
-
-1. A Resiris program is written on a computer.
-2. The Resiris Compiler converts the source program into the format that can be executed on Galena.
-3. The compiled program is transferred to the Galena device.
-4. The program is stored on the device.
-5. The user selects the program.
-6. The Galena Runtime executes the compiled program.
-
-> **Note:** The final compiled format and file extension are not yet defined.
-
----
-
-## Why a custom language?
-
-Galena is built around the idea that the programming language and the computing environment should be designed together.
-
-Instead of exposing the underlying ESP32 hardware directly to user programs, Resiris provides a higher-level programming environment. This allows the language to be designed specifically for:
-
-- calculations
-- programmable applications
-- games
-- Galena modules
-- interaction with the Galena system
-
-The goal is to make programming on a small dedicated device simple while still allowing the system to grow over time.
-
----
-
-## Architecture
-
-Galena is made up of the following components:
-
-| Component | Description |
-|---|---|
-| **Resiris** | The programming language used to write Galena programs. |
-| **Resiris Compiler** | Converts Resiris source code (`.resy`) into a compiled format that can run on the Galena device. Intended to run on a development computer, not on the ESP32 itself. |
-| **Galena Runtime** | Executes compiled Resiris programs on the device. Execution is planned around compiled bytecode rather than interpreting `.resy` source directly on the ESP32. |
-| **Galena System** | Provides the environment programs run in: UI, input, display, storage, modules, program execution and calculator functionality. Architecture still under development. |
-| **Hardware** | The physical device Galena runs on — see below. |
-
-### Hardware
-
-The first Galena hardware implementation is planned around an ESP32. The current hardware direction includes:
-
-- ESP32-WROOM-32
-- 128×64 OLED display (SSD1309 controller)
-- custom keyboard
-- storage
-- custom PCB
-- custom enclosure
-
-Hardware specifications may change during development.
-
----
-
-## Applications
-
-The Galena environment is intended to support several types of programs:
-
-- **Calculator** — the initial and primary application: a programmable scientific calculator.
-- **Programs** — users can create their own Resiris programs and run them on Galena.
-- **Games** — Galena is also intended to support games written in Resiris.
-- **Modules** — provide functionality to Resiris programs without exposing the underlying hardware directly.
-
----
-
-## Development status & roadmap
-
-Galena is an **active development project**, currently focused on establishing the foundations of the Resiris language and its compiler/runtime architecture, ahead of the Galena system itself.
-
-Development proceeds in stages, starting with PC-based prototypes and testing before moving functionality onto the ESP32:
-
-```text
-1. Language     → Resiris, Compiler, Runtime
-2. System       → UI, Input, Display, Storage
-3. Applications → Calculator, Programs, Games
-4. Hardware     → ESP32-based Galena device
-```
-
-Many components of the final system are still under development and should not be considered implemented unless explicitly documented as such.
-
-**Open questions:**
-- Final compiled bytecode format and file extension
-- Exact architecture of the Galena System
-- Final hardware specifications
-
----
-
-## Repository structure
-
-The repository will contain the Galena platform itself. A planned structure is:
+## Repository layout
 
 ```text
 Galena/
-│
 ├── README.md
 ├── LICENSE
-├── CHANGELOG.md
-│
-├── docs/
-├── hardware/
-├── firmware/
-├── system/
-├── runtime/
-├── calculator/
-├── modules/
-├── programs/
-└── games/
+├── platformio.ini          # esp32dev / Arduino, C++17
+├── scripts/
+│   └── generate_programs.py # embeds programs/*.resy into a C++ header
+├── src/
+│   ├── main.cpp            # device entry point
+│   └── generated_programs.hpp  # generated, do not edit
+├── programs/               # the .resy programs that can be built and run
+└── lib/
+    └── Resiris/            # vendored copy of Resiris
+        ├── README.md
+        ├── HOW_TO_USE.md
+        └── WRITING_MODULES.md
 ```
 
-Directories will be added as the corresponding components are developed.
+`lib/Resiris` is vendored directly into this repository rather than pulled in as
+a submodule.
 
----
-
-## Related projects
-
-### Resiris
-
-The programming language used by Galena.
-
-**Repository:**
-https://github.com/SilentDev-nocopy/Resiris.git
-
----
-
-## Long-term vision
-
-The long-term goal of Galena is to create a small, self-contained computing environment where the hardware, system software, runtime and programming language are designed to work together.
-
-The intended experience is simple:
+## Roadmap
 
 ```text
-Write → Compile → Transfer → Run → Create
+1. Language     → Resiris, compiler, runtime     ← current
+2. System       → UI, input, display, storage
+3. Applications → calculator, programs, games
+4. Hardware     → ESP32-based Galena device
 ```
 
-Galena is an experiment in building a complete computing environment from the ground up — from the hardware to the programming language.
+The hardware target is an ESP32-WROOM-32 with a 128×64 OLED display, a custom
+keyboard, storage, a custom PCB and a custom enclosure. Treat those as
+directions rather than committed specifications.
+
+Still open: the compiled bytecode format and its file extension, the
+architecture of the Galena System, and the final hardware.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
