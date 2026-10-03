@@ -164,7 +164,7 @@ Galena/
 ├── README.md
 ├── LICENSE
 ├── platformio.ini          # esp32dev / Arduino, C++17, src_dir = esp32
-├── Makefile                # a PC build
+├── Makefile                # the PC build
 ├── esp32/
 │   └── main.cpp            # the device entry point
 ├── pc/
@@ -204,7 +204,7 @@ The hardware target is an ESP32-WROOM-32 with a 128×64 OLED display, a custom
 keyboard, storage, a custom PCB and a custom enclosure. Treat those as
 directions rather than committed specifications.
 
-Still open: the compiled bytecode format and its file extension, the
+Still open: Its file extension, the
 architecture of the Galena System, and the final hardware.
 
 ## License
