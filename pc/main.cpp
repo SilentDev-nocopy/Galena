@@ -68,21 +68,21 @@ std::string selected_identifier(const std::string& path) {
 
 void print_usage(const char* program) {
     std::cout
-        << "Galena -- a Resiris interpreter futtatása galénán, ESP32 nélkül\n\n"
-        << "Használat:\n"
-        << "  " << program << " <program.resy>   egy .resy programot futtat\n"
-        << "  " << program << " --embedded        azt a programot futtatja, amit\n"
-        << "                          az eszköz jelenlegi buildje futtat\n"
+        << "Galena -- runs Resiris programs on a PC, without an ESP32\n\n"
+        << "Usage:\n"
+        << "  " << program << " <program.resy>   runs one .resy program\n"
+        << "  " << program << " --embedded        runs the program that the\n"
+        << "                          device's current build runs\n"
         << "\n"
-        << "Kapcsolók:\n"
-        << "  --frames <N>     hány PROCESS() lifecycle keretet futtasson\n"
-        << "                   (alapértelmezés 6, ugyanaz mint az ESP32-on)\n"
-        << "  --main <útvonal> honnan olvassa a kiválasztott programot\n"
-        << "                   --embedded esetén (alapértelmezés esp32/main.cpp)\n"
-        << "  --version        verzió kiírása\n"
-        << "  --help           ez a szöveg\n"
+        << "Options:\n"
+        << "  --frames <N>     how many PROCESS() lifecycle frames to run\n"
+        << "                   (default 6, the same as on the ESP32)\n"
+        << "  --main <path>    where to read the selected program from\n"
+        << "                   for --embedded (default esp32/main.cpp)\n"
+        << "  --version        prints the version\n"
+        << "  --help           prints this text\n"
         << "\n"
-        << "Kilépési kód: 0 siker, 1 a program kivételt dobott, 2 használati hiba.\n";
+        << "Exit code: 0 success, 1 the program threw, 2 usage error.\n";
 }
 
 bool parse_frames(const char* text, int* out) {
@@ -119,13 +119,13 @@ int main(int argc, char** argv) {
         }
         if (argument == "--frames" || argument == "--main") {
             if (i + 1 >= argc) {
-                std::cerr << "galena: " << argument << " utan kell egy ertek\n";
+                std::cerr << "galena: " << argument << " needs a value\n";
                 return kUsageError;
             }
             const std::string value = argv[++i];
             if (argument == "--frames") {
                 if (!parse_frames(value.c_str(), &options.process_frames)) {
-                    std::cerr << "galena: ervenytelen keretszam: " << value << "\n";
+                    std::cerr << "galena: invalid frame count: " << value << "\n";
                     return kUsageError;
                 }
             }
@@ -135,11 +135,11 @@ int main(int argc, char** argv) {
             continue;
         }
         if (!argument.empty() && argument[0] == '-') {
-            std::cerr << "galena: ismeretlen kapcsolo: " << argument << "\n";
+            std::cerr << "galena: unknown option: " << argument << "\n";
             return kUsageError;
         }
         if (!file.empty()) {
-            std::cerr << "galena: csak egy program adható meg\n";
+            std::cerr << "galena: only one program may be given\n";
             return kUsageError;
         }
         file = argument;
@@ -157,8 +157,8 @@ int main(int argc, char** argv) {
     if (embedded) {
         const std::string identifier = selected_identifier(main_cpp);
         if (identifier.empty()) {
-            std::cerr << "galena: nem sikerult kiolvasni a kiválasztott "
-                         "programot innen: "
+            std::cerr << "galena: could not read the selected "
+                         "program from: "
                       << main_cpp << "\n";
             return kUsageError;
         }
@@ -169,16 +169,16 @@ int main(int argc, char** argv) {
             label = selected->file;
         }
         if (source.empty()) {
-            std::cerr << "galena: ismeretlen program azonosito: " << identifier
-                      << "\n  futtasd a scripts/generate_programs.py-t, hogy "
-                         "frissuljon a header\n";
+            std::cerr << "galena: unknown program identifier: " << identifier
+                      << "\n  run scripts/generate_programs.py so the "
+                         "header updates\n";
             return kUsageError;
         }
     }
     else {
         std::ifstream input(file, std::ios::binary);
         if (!input) {
-            std::cerr << "galena: nem sikerult megnyitni: " << file << "\n";
+            std::cerr << "galena: could not open: " << file << "\n";
             return kUsageError;
         }
         std::ostringstream buffer;
@@ -188,5 +188,9 @@ int main(int argc, char** argv) {
     }
 
     options.label = label.c_str();
+    // `label` already holds the .resy file name in both the embedded and the
+    // file branch, so an ESP_ONLY module can be reported against this script.
+    options.program_name = label.c_str();
+    options.host_build = true;
     return galena::run_program(source.c_str(), options) == 0 ? 0 : kProgramFailed;
 }

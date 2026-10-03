@@ -166,9 +166,9 @@ Galena/
 ├── platformio.ini          # esp32dev / Arduino, C++17, src_dir = esp32
 ├── Makefile                # a PC build
 ├── esp32/
-│   └── main.cpp            # az eszköz belépési pontja
+│   └── main.cpp            # the device entry point
 ├── pc/
-│   └── main.cpp            # a PC belépési pontja
+│   └── main.cpp            # the host entry point
 ├── scripts/
 │   └── generate_programs.py # embeds programs/*.resy into a C++ header
 ├── programs/               # the .resy programs that can be built and run

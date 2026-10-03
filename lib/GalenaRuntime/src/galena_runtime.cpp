@@ -68,8 +68,8 @@ int run_program(const char* source, const RunOptions& options) {
             std::make_shared<resiris::RsMathModule>()
         };
 
-        auto registry =
-            std::make_shared<resiris::ModuleRegistry>(std::move(modules));
+        auto registry = std::make_shared<resiris::ModuleRegistry>(
+            std::move(modules), options.host_build);
 
         // Tokenizing
         resiris::Tokenizer tokenizer;
@@ -92,8 +92,19 @@ int run_program(const char* source, const RunOptions& options) {
         return 0;
     }
     catch (const std::exception& error) {
+        const std::string message = error.what();
+        // An ESP_ONLY module cannot run here, and the program is refused at its
+        // include instead of continuing with the hardware calls missing. Name
+        // the script, because the bare error only carries the module.
+        if (message.find(resiris::kEspOnlyErrorCode) != std::string::npos &&
+            options.program_name != nullptr) {
+            resiris::write_text(std::string("ModuleError: ") +
+                                options.program_name +
+                                " contains an ESP_ONLY module! On PC it can't run!\n");
+            return 1;
+        }
         resiris::write_text(std::string(exception_name(error)) + ": " +
-                            error.what() + "\n");
+                            message + "\n");
         return 1;
     }
 }

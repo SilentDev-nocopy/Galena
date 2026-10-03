@@ -49,10 +49,17 @@ infrastructure.
 All six methods below are pure virtual, so you implement every one of them or
 the code will not compile.
 
+`target()` is the seventh, and it is not optional: every module states which
+kind it is.
+
 ```cpp
 class Module {
 public:
     virtual ~Module() = default;
+
+    // Which targets can run this module. Required, see "Which kind of module
+    // am I?" below.
+    virtual ModuleTarget target() const = 0;
 
     // The name scripts use: <include> X  →  X.func()  and  X[NAME]
     virtual std::string module_name() const = 0;
@@ -153,6 +160,51 @@ a tidy argument error. Throw `ModuleError` with your own message and the script
 author sees that text, prefixed with the line and column. Anything else
 propagates as a generic runtime error, so prefer one of the two.
 
+## Which kind of module am I?
+
+Every module answers one extra question: can a PC run it?
+
+```cpp
+// module.hpp
+enum class ModuleTarget {
+    EspOnly,   // needs real ESP32 hardware
+    EspAndPc,  // portable, runs on both targets
+};
+```
+
+Both shipped modules are `EspAndPc`. The answer is one line:
+
+```cpp
+ModuleTarget target() const override { return ModuleTarget::EspAndPc; }
+```
+
+There is deliberately no default. Picking the wrong kind only shows up once a
+program is already running on the wrong target, so the compiler asks instead.
+
+**What the answer buys you.** The check runs at `<include>`, not at the call
+site, so a script that includes an `EspOnly` module on a PC stops immediately,
+before it has produced any output:
+
+```console
+$ ./build/galena blinky.resy
+ModuleError: blinky.resy contains an ESP_ONLY module! On PC it can't run!
+```
+
+The device runs every module regardless of the answer, so an `EspOnly` module is
+the normal case for anything that drives hardware.
+
+The registry is refused rather than partially applied on purpose. There is no
+return value to substitute for a missing hardware call, and a substituted `0`
+would let the script keep running and quietly take the wrong branch. A script
+that cannot run correctly does not run.
+
+**The one thing this does not fix.** The check is reached only if the module
+*compiles* on a host. A module that includes `<Arduino.h>` breaks the PC build
+before `target()` is ever consulted, which takes the whole `make` down rather
+than refusing one script. So a module marked `EspOnly` still has to be written
+portably: keep the hardware access behind a hook that the entry point installs,
+the way `set_text_sink` is installed for text output.
+
 ## A complete example
 
 This module does nothing useful. Every function returns a fixed value. Its only
@@ -179,6 +231,8 @@ namespace resiris {
  */
 class TutorialModule : public Module {
 public:
+    ModuleTarget target() const override { return ModuleTarget::EspAndPc; }
+
     std::string module_name() const override { return "Tutorial"; }
 
     // handle, touch and read are object METHODS, but they still belong here:

@@ -6,6 +6,8 @@ namespace resiris {
 
 class RsMathModule : public Module {
 public:
+    ModuleTarget target() const override { return ModuleTarget::EspAndPc; }
+
     std::string module_name() const override { return "RSMath"; }
 
     std::vector<std::string> function_names() const override {

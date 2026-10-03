@@ -18,10 +18,21 @@ namespace resiris {
 // module error message.
 class ModuleSignatureError {};
 
+// Which targets can run a module. The device runs every module; a host build
+// refuses an EspOnly module rather than running it with the hardware missing.
+enum class ModuleTarget {
+    EspOnly,
+    EspAndPc,
+};
+
 // A native Resiris module (C++ port of the Python prototype modules).
 class Module {
 public:
     virtual ~Module() = default;
+
+    // Every module states which kind it is. There is no default to forget,
+    // because guessing wrong only shows up once a program is already running.
+    virtual ModuleTarget target() const = 0;
 
     virtual std::string module_name() const = 0;
     virtual std::vector<std::string> function_names() const = 0;
@@ -50,11 +61,22 @@ public:
     }
 };
 
+// The error code ModuleRegistry puts in its message when a host build refuses
+// an ESP_ONLY module. The interpreter flattens every ModuleError into a plain
+// ResirisError, so this marker is what lets a caller recognise the case and
+// report the offending script name.
+constexpr const char* kEspOnlyErrorCode = "EspOnlyOnHost";
+
 // C++ port of the Python-side ModuleLoader. Modules are registered natively
 // instead of loaded from Python files.
 class ModuleRegistry {
 public:
-    explicit ModuleRegistry(std::vector<std::shared_ptr<Module>> modules) {
+    // `host_build` is true on the PC target and false on the device. It only
+    // decides whether an EspOnly module may be included, which is why a module
+    // can name its kind absolutely instead of consulting a build flag.
+    explicit ModuleRegistry(std::vector<std::shared_ptr<Module>> modules,
+                            bool host_build = false)
+        : host_build_(host_build) {
         for (auto& module : modules) {
             available_[module->module_name()] = std::move(module);
         }
@@ -75,7 +97,9 @@ public:
         return found->second->has_function(fn);
     }
 
-    // <include> executes this. Duplicate includes are rejected.
+    // <include> executes this. Duplicate includes are rejected, and a host
+    // build rejects an EspOnly module here rather than letting the program run
+    // with its hardware calls quietly missing.
     void load(const std::string& module_name) {
         if (loaded_.count(module_name) != 0) {
             throw ModuleError(
@@ -84,6 +108,10 @@ public:
         auto found = available_.find(module_name);
         if (found == available_.end()) {
             throw ModuleError(module_name + " not found! Error code:\"MissingModule\"");
+        }
+        if (host_build_ && found->second->target() == ModuleTarget::EspOnly) {
+            throw ModuleError(module_name + " is ESP_ONLY. Error code:\"" +
+                              kEspOnlyErrorCode + "\"");
         }
         loaded_.insert(module_name);
     }
@@ -179,6 +207,7 @@ public:
 private:
     std::map<std::string, std::shared_ptr<Module>> available_;
     std::set<std::string> loaded_;
+    bool host_build_ = false;
 
     Module& get(const std::string& module_name) const {
         if (loaded_.count(module_name) == 0) {

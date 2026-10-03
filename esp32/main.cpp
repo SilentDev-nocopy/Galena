@@ -26,10 +26,14 @@ void setup() {
     // The Resiris program to run, chosen at build time from programs/*.resy. To
     // run a different one, name its identifier here. scripts/generate_programs.py
     // rewrites this line, and the host's --embedded mode reads it back.
-    const char* source = resiris_programs::features_resy;
+    const char* source = resiris_programs::recursion_depth_resy;
 
     galena::run_program(source, galena::RunOptions{
                                    .label =
+                                       resiris_programs::resy_program_name(source),
+                                   // The device runs every module, so the ESP_ONLY
+                                   // check stays off here; host_build defaults to false.
+                                   .program_name =
                                        resiris_programs::resy_program_name(source),
                                    .process_frames = 6,
                                });

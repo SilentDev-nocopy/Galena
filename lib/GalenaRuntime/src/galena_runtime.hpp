@@ -7,6 +7,15 @@ struct RunOptions {
     // what you want on a host while running an arbitrary file.
     const char* label = nullptr;
 
+    // The .resy file name to name in an error message. On the device this comes
+    // from the embedded program's metadata, because there is no file on disk.
+    const char* program_name = nullptr;
+
+    // True on the host, false on the device. A host build refuses an ESP_ONLY
+    // module at its `include` instead of running the program with the hardware
+    // calls quietly missing.
+    bool host_build = false;
+
     // How many PROCESS() lifecycle frames to run after the top level. The ESP32
     // entry point runs six, and the host runs the same six, so a program behaves
     // identically in both places. Zero skips the lifecycle entirely.

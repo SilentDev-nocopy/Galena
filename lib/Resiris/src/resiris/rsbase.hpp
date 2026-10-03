@@ -18,6 +18,8 @@ struct TimerState : FrameAwareState {
 
 class RsBaseModule : public Module {
 public:
+    ModuleTarget target() const override { return ModuleTarget::EspAndPc; }
+
     std::string module_name() const override { return "RSBase"; }
 
     std::vector<std::string> function_names() const override {

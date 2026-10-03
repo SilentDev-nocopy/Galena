@@ -5,5 +5,5 @@
 .vscode/settings.json
 .vscode/
 
-# A natív (PC) build kimenete
+# Output of the native (PC) build
 build/
