@@ -8,8 +8,8 @@
 #include <utility>
 #include <vector>
 
-#include "resiris/errors.hpp"
-#include "resiris/value.hpp"
+#include "System/errors.hpp"
+#include "System/value.hpp"
 
 namespace resiris {
 
@@ -24,6 +24,10 @@ enum class ModuleTarget {
     EspOnly,
     EspAndPc,
 };
+
+// Defined below. A module only needs the type declared to take it as a
+// reference parameter, which is all on_registered() asks for.
+class ModuleRegistry;
 
 // A native Resiris module (C++ port of the Python prototype modules).
 class Module {
@@ -50,6 +54,19 @@ public:
     // Exported constant access. Throws ModuleError on unknown constant or
     // wrong exported type.
     virtual Value get_constant(const std::string& name) const = 0;
+
+    // Called once by the registry right after every module has been collected,
+    // so a module can see its siblings. It is not pure and has an empty default
+    // because almost no module needs it: the registry itself is the only thing
+    // that knows the full module list, and only a module like RSSystem, which
+    // reports what is available, ever has to ask.
+    //
+    // This is also why modules must stay default-constructible. The build
+    // generates the registry contents from the files in src/modules/, so it can
+    // only ever call make_shared<Module>() and cannot pass arguments.
+    virtual void on_registered(ModuleRegistry& registry) {
+        (void)registry;
+    }
 
     bool has_function(const std::string& fn) const {
         for (const auto& name : function_names()) {
@@ -80,6 +97,21 @@ public:
         for (auto& module : modules) {
             available_[module->module_name()] = std::move(module);
         }
+        for (auto& entry : available_) {
+            entry.second->on_registered(*this);
+        }
+    }
+
+    // Every registered module name, in the map's own key order, so the list is
+    // the same on every run. This includes modules the script never includes,
+    // so it answers "what could I use", not "what is this program using".
+    std::vector<std::string> module_names() const {
+        std::vector<std::string> names;
+        names.reserve(available_.size());
+        for (const auto& entry : available_) {
+            names.push_back(entry.first);
+        }
+        return names;
     }
 
     bool is_loaded(const std::string& module_name) const {

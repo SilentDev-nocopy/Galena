@@ -4,8 +4,8 @@ How to write a native Resiris module in C++: the whole `Module` interface, what
 the registry checks for you, and a complete example that does nothing except
 show what a module looks like from the inside.
 
-[HOW_TO_USE.md §11–13](HOW_TO_USE.md#11-rsmath) covers using the modules that
-already ship with the language.
+[MODULES.md](MODULES.md) covers using the modules that already ship with the
+language.
 
 ---
 
@@ -32,17 +32,34 @@ becomes a module rather than a change to the language.
 
 ## Where the code lives
 
+Everything is split in two folders. `System/` is the language itself — it knows
+nothing about any specific module — and `modules/` is one folder of product
+features, where a new module goes.
+
 | File | Role |
 |---|---|
-| `resiris/module.hpp` | The `Module` base class, `ModuleSignatureError`, `ModuleRegistry` |
-| `resiris/value.hpp` | `Value`, `ModuleObject`, `FrameAwareState` |
-| `rsmath.hpp` / `rsmath.cpp` | `RsMathModule`, the simplest real module |
-| `rsbase.hpp` / `rsbase.cpp` | `RsBaseModule`, a stateful module with object handles |
-| `galena_runtime.cpp` | Registers the modules; both build targets call it, so a module added here is available on the ESP32 and on a PC alike |
+| `System/module.hpp` | The `Module` base class, `ModuleSignatureError`, `ModuleRegistry` |
+| `System/value.hpp` | `Value`, `ModuleObject`, `FrameAwareState` |
+| `System/platform.hpp` | Host services, including the program clock `RSSystem` reads |
+| `modules/rsmath.hpp` / `modules/rsmath.cpp` | `RsMathModule`, the simplest real module |
+| `modules/rsbase.hpp` / `modules/rsbase.cpp` | `RsBaseModule`, a stateful module with object handles |
+| `modules/rssystem.hpp` / `modules/rssystem.cpp` | `RsSystemModule`, a module that reads the machine instead of the script |
 
-There are two module implementations today. Both sit in the library root rather
-than under `resiris/`, because they are product features rather than language
-infrastructure.
+Each header sits beside the `.cpp` that implements it, and both are reached from
+the `lib/Resiris/` folder: `#include "System/module.hpp"`,
+`#include "modules/rsmath.hpp"`.
+
+A module is **two files in `modules/`** and nothing else.
+`scripts/generate_modules.py` reads every header in that folder before each
+build and writes the registry contents into `generated_modules.hpp`, so a new
+module ships on the ESP32 and on a PC at the same time without any further edit.
+See [Registering it](#registering-it) for what the folder has to look like.
+
+`RSSystem` is the one to read for a module that needs something the language
+cannot supply: facts about the host. Its two host-measured values — `uptime` and
+`cpu_load` — are read from `platform.hpp` on demand rather than taken as
+constructor arguments, and its ESP32 hardware reads sit behind one `#if
+ARDUINO` so the file still compiles for a host.
 
 ## The interface
 
@@ -84,6 +101,9 @@ public:
 
     // Provided. Do not override:
     bool has_function(const std::string& fn) const;
+
+    // Provided, and empty. Override only to see the other registered modules:
+    // virtual void on_registered(ModuleRegistry& registry);
 };
 ```
 
@@ -96,6 +116,12 @@ even if your code implements it perfectly.
 Method names share the same list. `has_function` gates both `call_function` and
 `call_object_method`, so every method name has to appear in `function_names()`
 as well.
+
+`on_registered()` is the one optional member, and it is not pure, so it does not
+count among the seven you must write. The registry calls it on each module once
+they have all been collected, which is the only moment a module can find out what
+else exists. `RSSystem.modules()` is the only thing in this codebase that needs
+it; see [Registering it](#registering-it).
 
 ## What the registry checks, and what it leaves to you
 
@@ -172,7 +198,11 @@ enum class ModuleTarget {
 };
 ```
 
-Both shipped modules are `EspAndPc`. The answer is one line:
+All three shipped modules are `EspAndPc`, and that is the right answer for each:
+`RSMath` and `RSBase` are pure computation, and `RSSystem` marks itself portable
+while refusing only the eleven functions that read the ESP32. So the check is
+still unexercised — see the note on the hook below before relying on it. The
+answer is one line:
 
 ```cpp
 ModuleTarget target() const override { return ModuleTarget::EspAndPc; }
@@ -205,6 +235,32 @@ than refusing one script. So a module marked `EspOnly` still has to be written
 portably: keep the hardware access behind a hook that the entry point installs,
 the way `set_text_sink` is installed for text output.
 
+There are two portable shapes, and `RSSystem` shows the second one. A hook is
+right when the host has to supply something the module cannot compute: text
+output, or the two measurements behind `uptime` and `cpu_load`. A
+`#if defined(ARDUINO)` guard is right when the module reads a fixed piece of
+hardware and nothing else — the ESP32's heap size, the flash chip's capacity. The
+whole read then sits behind the guard and returns a flag saying whether it
+happened, so the refusal lives in one place:
+
+```cpp
+struct DeviceFacts { bool known = false; /* ... */ };
+
+DeviceFacts read_device_facts() {
+    DeviceFacts facts;
+#if defined(ARDUINO)
+    facts.heap_total = ESP.getHeapSize();
+    facts.known = true;
+#endif
+    return facts;
+}
+```
+
+Guarding each function separately with `#if` works too and reads more plainly,
+but it scatters the host/device decision through the dispatch. Either way the
+rule is the same: the file must build with plain `g++`, because `make` compiles
+every `lib/Resiris/**/*.cpp` on the host regardless of what `target()` says.
+
 ## A complete example
 
 This module does nothing useful. Every function returns a fixed value. Its only
@@ -214,12 +270,12 @@ how failures are reported.
 
 Save the two files as `tutorial.hpp` and `tutorial.cpp`.
 
-### tutorial.hpp
+### modules/tutorial.hpp
 
 ```cpp
 #pragma once
 
-#include "resiris/module.hpp"
+#include "System/module.hpp"
 
 namespace resiris {
 
@@ -268,10 +324,10 @@ struct TutorialState : public FrameAwareState {
 }  // namespace resiris
 ```
 
-### tutorial.cpp
+### modules/tutorial.cpp
 
 ```cpp
-#include "tutorial.hpp"
+#include "modules/tutorial.hpp"
 
 namespace resiris {
 
@@ -368,19 +424,64 @@ Value TutorialModule::get_constant(const std::string& name) const {
 
 ### Registering it
 
-A module does nothing until the registry knows about it, in `lib/GalenaRuntime/src/galena_runtime.cpp`:
+Save both files as `lib/Resiris/modules/tutorial.hpp` and
+`lib/Resiris/modules/tutorial.cpp`, and the module is registered. There is
+nothing else to do.
+
+`scripts/generate_modules.py` runs before every build and writes the folder into
+`lib/GalenaRuntime/src/generated_modules.hpp`:
 
 ```cpp
-#include "tutorial.hpp"
+#include "modules/tutorial.hpp"
 
-auto modules = std::vector<std::shared_ptr<resiris::Module>>{
-    std::make_shared<resiris::RsBaseModule>(),
-    std::make_shared<resiris::RsMathModule>(),
-    std::make_shared<resiris::TutorialModule>(),   // added
-};
-
-auto registry = std::make_shared<resiris::ModuleRegistry>(std::move(modules));
+inline std::vector<std::shared_ptr<resiris::Module>> make_modules() {
+    return std::vector<std::shared_ptr<resiris::Module>>{
+        std::make_shared<resiris::RsBaseModule>(),
+        std::make_shared<resiris::RsMathModule>(),
+        std::make_shared<resiris::RsSystemModule>(),
+        std::make_shared<resiris::TutorialModule>(),   // added
+    };
+}
 ```
+
+`galena_runtime.cpp` hands that straight to the registry, so this is the one
+list and there is no second place to update. Because the generator can only
+write `make_shared<>()`, two things follow for the folder:
+
+1. **The header must have `#pragma once` and exactly one class deriving from
+   `Module`.** The generator reads that class name out of the file, so there is
+   no naming convention to follow. A helper class in the same folder is ignored;
+   a second `Module` subclass is a build error, because the generator cannot tell
+   which one you meant.
+2. **The class must be default-constructible.** If a module needs data from the
+   host, it asks for it instead of taking an argument.
+
+The registry calls `on_registered(ModuleRegistry&)` on every module once they are
+all collected, which is how a module learns its siblings. `RSSystem.modules()`
+uses it to report what the build shipped, and it is why RSSystem now includes
+itself in that list without having to be appended by hand:
+
+```cpp
+void RsSystemModule::on_registered(ModuleRegistry& registry) {
+    registry_ = &registry;
+}
+```
+
+The override is optional — the base class has an empty one — so a module that
+does not care what else exists says nothing. Host measurements are the other
+kind of thing a module cannot construct, and those come from
+`platform.hpp`, which the runtime fills in once per run:
+
+```cpp
+// platform.hpp, called by the module at the point of use
+if (!has_program_clock()) {
+    throw ModuleError("RSSystem.cpu_load: no host installed a program clock");
+}
+return Value::make_float(program_cpu_load());
+```
+
+The runtime installs the clock with `set_program_clock()` before the program
+runs.
 
 ### Using it from Resiris
 

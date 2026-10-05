@@ -6,7 +6,7 @@ dependencies, so the same source builds for a desktop host as well as for the
 ESP32.
 
 The language is deliberately small. The whole surface is seven types, a handful
-of keywords and two built-in modules, and most of what you might expect to find
+of keywords and three built-in modules, and most of what you might expect to find
 in a scripting language is not there. Knowing what is missing matters more than
 what is there, so that comes first.
 
@@ -193,12 +193,15 @@ can tell a syntax error from a type error or a module error.
 Absent on purpose or for now: no `!` operator, no power operator, no bitwise
 operators, no containers, no `null`, no comment syntax other than `##`.
 
-Version `1.9-cpp`, in `resiris/version.hpp`.
+Version `1.9-cpp`, in `System/version.hpp`.
 
 ## More
 
 [HOW_TO_USE.md](HOW_TO_USE.md) is the full reference: lexical structure, every
-type and statement, scoping rules, both module references, and the error model.
+type and statement, scoping rules, and the error model.
+
+[MODULES.md](MODULES.md) documents each built-in module in its own section: what
+it offers, what it raises on a PC, and which parts are portable.
 
 [WRITING_MODULES.md](WRITING_MODULES.md) covers the module interface for people
 writing one in C++.

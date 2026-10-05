@@ -1,11 +1,11 @@
-#include "resiris/tokenizer.hpp"
+#include "System/tokenizer.hpp"
 
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <unordered_map>
 
-#include "resiris/syntax_error.hpp"
+#include "System/syntax_error.hpp"
 
 namespace resiris {
 

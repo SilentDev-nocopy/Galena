@@ -15,7 +15,7 @@
 
 #include "galena_runtime.hpp"
 #include "generated_programs.hpp"
-#include "resiris/platform.hpp"
+#include "System/platform.hpp"
 
 
 namespace {

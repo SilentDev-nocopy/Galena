@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "resiris/ast.hpp"
-#include "resiris/module.hpp"
-#include "resiris/value.hpp"
+#include "System/ast.hpp"
+#include "System/module.hpp"
+#include "System/value.hpp"
 
 namespace resiris {
 

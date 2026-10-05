@@ -10,7 +10,7 @@ designed together. User programs never touch the ESP32 hardware directly.
 ## Where the project stands
 
 The work so far is the language and its runtime. The tokenizer, parser and
-interpreter run on the ESP32, along with two built-in modules. The rest of the
+interpreter run on the ESP32, along with three built-in modules. The rest of the
 plan does not exist yet.
 
 | Piece | State |
@@ -18,6 +18,7 @@ plan does not exist yet.
 | Resiris tokenizer, parser, interpreter | implemented, runs on the device |
 | `RSMath` module — 29 math functions, `PI`, `E` | implemented |
 | `RSBase` module — 7 timer functions | implemented |
+| `RSSystem` module — 15 machine-fact functions, 4 portable | implemented |
 | Build-time embedding of `programs/*.resy` | implemented |
 | Resiris compiler and bytecode | not started |
 | Galena System — UI, display, input, storage | not started |
@@ -47,6 +48,10 @@ modified in `git status` usually means a build picked a different program rather
 than that the source changed.
 
 Pass `--no-select` to regenerate the header without touching `main.cpp`.
+
+`scripts/generate_modules.py` runs in the same pre-build step and never prompts:
+it turns `lib/Resiris/modules/*.hpp` into
+`lib/GalenaRuntime/src/generated_modules.hpp`, which is the whole module list.
 
 ### Running on a PC
 
@@ -108,7 +113,9 @@ has to walk a collection, sort, search or parse belongs in a module.
   is good at, what it cannot do, and the decisions that make it behave
   differently from C or Python.
 - [lib/Resiris/HOW_TO_USE.md](lib/Resiris/HOW_TO_USE.md) — the full reference,
-  covering every type and statement, scoping, both modules, and the error model.
+  covering every type and statement, scoping, and the error model.
+- [lib/Resiris/MODULES.md](lib/Resiris/MODULES.md) — one section per built-in
+  module, saying what it offers and what it refuses.
 - [lib/Resiris/WRITING_MODULES.md](lib/Resiris/WRITING_MODULES.md) — writing a
   module in C++.
 
@@ -121,6 +128,7 @@ The language is also maintained separately at
 |---|---|
 | `programs/features.resy` | language self-test: types, operators, `mat`, closures, lifecycle, and 27 of the 29 `RSMath` functions |
 | `programs/test.resy` | minimal smoke test |
+| `programs/rssystem.resy` | the portable part of `RSSystem`, so it runs on both targets |
 | `programs/recursion_depth.resy` | recursion-depth regression test guarding the per-frame stack cost |
 
 ## Architecture
@@ -170,17 +178,23 @@ Galena/
 ├── pc/
 │   └── main.cpp            # the host entry point
 ├── scripts/
-│   └── generate_programs.py # embeds programs/*.resy into a C++ header
+│   ├── generate_programs.py # embeds programs/*.resy into a C++ header
+│   └── generate_modules.py  # turns modules/*.hpp into the module list
 ├── programs/               # the .resy programs that can be built and run
 └── lib/
     ├── GalenaRuntime/      # the run pipeline both targets share
     │   └── src/
     │       ├── galena_runtime.{hpp,cpp}
-    │       └── generated_programs.hpp  # generated, do not edit
-    └── Resiris/            # vendored copy of Resiris
+    │       ├── generated_programs.hpp  # generated, do not edit
+    │       └── generated_modules.hpp   # generated, do not edit
+    └── Resiris/
         ├── README.md
         ├── HOW_TO_USE.md
-        └── WRITING_MODULES.md
+        ├── MODULES.md
+        ├── WRITING_MODULES.md
+        ├── System/         # the language: interpreter, parser, tokenizer,
+        │                   # values, modules. Each .hpp sits beside its .cpp
+        └── modules/        # one .hpp + .cpp per native module
 ```
 
 `esp32/` and `pc/` are the two build targets, and each holds only its own entry
@@ -188,8 +202,13 @@ point. Everything they share sits in `lib/` as a library, which PlatformIO
 compiles into the firmware on its own. `platformio.ini` sets `src_dir = esp32`,
 so there is no `src/` directory at all.
 
-`lib/Resiris` is vendored directly into this repository rather than pulled in as
-a submodule.
+Inside `lib/Resiris` the split is deliberate. `System/` is the language and
+knows nothing about any particular module; `modules/` holds product features.
+There is no third level to remember and no header separated from the `.cpp` that
+implements it. A module is **two files in `modules/` and nothing more**:
+`scripts/generate_modules.py` runs before every build and writes the folder into
+`generated_modules.hpp`, so **no module is ever registered by hand**. Adding one
+means creating `modules/<name>.hpp` and `modules/<name>.cpp` and building.
 
 ## Roadmap
 

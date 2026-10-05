@@ -178,6 +178,33 @@ probe(5)
 print_cmd("done")
 )RESY";
 
+// programs/rssystem.resy
+constexpr const char* rssystem_resy =
+R"RESY(<include> RSSystem
+
+## RSSystem in the portable subset: the facts that have an answer on both
+## targets, so this program runs the same on a PC and on the device.
+##
+## The hardware facts -- chip_model, chip_revision, cpu_speed, memory_total,
+## memory_free, memory_used, memory_min_free, psram_size, flash_total and
+## flash_used -- read the ESP32's own silicon and flash. On a PC they raise a
+## ModuleError naming the function rather than answering with a number that
+## describes some other machine, so this program does not call them: on a host it
+## would stop here. report() collects them anyway, which is what makes it the
+## call worth reaching for on a device.
+
+c FPS float = 4.0
+
+v frame int = 0
+
+START():
+	print_cmd("modules: " + RSSystem.modules())
+	print_cmd("cores:   " + str(RSSystem.cpu_cores()))
+	print_cmd("uptime:  " + str(RSSystem.uptime()))
+	print_cmd("load:    " + str(RSSystem.cpu_load()))
+
+)RESY";
+
 // programs/test.resy
 constexpr const char* test_resy =
 R"RESY(v x int = 10
@@ -196,10 +223,11 @@ struct ResyProgram {
 constexpr ResyProgram kResyPrograms[] = {
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
+    {"programs/rssystem.resy", "rssystem", "rssystem_resy", rssystem_resy},
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 3;
+constexpr int kResyProgramCount = 4;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {

@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "resiris/errors.hpp"
+#include "System/errors.hpp"
 
 namespace resiris {
 

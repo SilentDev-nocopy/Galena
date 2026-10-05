@@ -1,10 +1,10 @@
-#include "resiris/interpreter.hpp"
+#include "System/interpreter.hpp"
 
 #include <cmath>
 #include <set>
 
-#include "resiris/parser.hpp"
-#include "resiris/platform.hpp"
+#include "System/parser.hpp"
+#include "System/platform.hpp"
 
 #if defined(__GNUC__)
 #define RESIRIS_NOINLINE __attribute__((noinline))

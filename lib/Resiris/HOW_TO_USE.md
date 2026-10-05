@@ -1,10 +1,11 @@
 # Resiris in practice
 
-The full reference: lexical structure, types, statements, scoping, both
-built-in modules and the error model. The
-[README](README.md) explains why the language is shaped the way it is, and
-`WRITING_MODULES.md` is for writing modules in C++. Read that first if you have
-not.
+The full reference: lexical structure, types, statements, scoping, the error
+model, and the syntax for reaching a module. The
+[README](README.md) explains why the language is shaped the way it is,
+[MODULES.md](MODULES.md) lists what each built-in module offers, and
+`WRITING_MODULES.md` is for writing modules in C++. Read the README first if you
+have not.
 
 ---
 
@@ -272,93 +273,13 @@ stack will allow deeper nesting.
 | `Module.func(args)` | Call a module function |
 | `Module[NAME]` | Read a module constant |
 
----
-
-## 11. RSMath
-
-Import with `<include> RSMath`.
-
-29 functions, plus the constants `PI` and `E`.
-
-| Group | Functions |
-|---|---|
-| Rounding and roots | `abs` `sqrt` `cbrt` `pow` `floor` `ceil` `round` |
-| Logarithms | `ln` `log10` |
-| Trigonometry | `sin` `cos` `tan` `asin` `acos` `atan` `hypot` `pythagoras` |
-| Integer maths | `factorial` `ncr` `npr` `gcd` `lcm` `mod` |
-| Ranges | `min` `max` `clamp` |
-| Float predicates | `is_nan` `is_inf` `is_finite` |
-
-```resiris
-print_cmd(RSMath.sqrt(16.0))      ## 4.0
-print_cmd(RSMath.pow(2.0, 10.0))  ## 1024.0
-print_cmd(RSMath.factorial(10))   ## 3628800
-print_cmd(RSMath.ncr(5, 2))       ## 10
-print_cmd(RSMath.gcd(12, 18))     ## 6
-print_cmd(RSMath.clamp(5.5, 1.0, 3.0))
-print_cmd(RSMath[PI])
-```
-
-Every one of these is an iterative loop or a single libm call, and none of them
-calls back into the interpreter. No `RSMath` call grows the stack, and none can
-exhaust it.
+Which module you are calling, and what it offers, is in
+[MODULES.md](MODULES.md); writing one is in
+[WRITING_MODULES.md](WRITING_MODULES.md).
 
 ---
 
-## 12. RSBase
-
-Import with `<include> RSBase`. Seven functions for timers and their callbacks,
-which is the language's only source of deferred work.
-
-| Function | Purpose |
-|---|---|
-| `RSBase.await()` | Create a timer handle, yielding a `ModuleObject` |
-| `set_timer(seconds)` | Arm it |
-| `on_timeout("fn_name")` | Name a Resiris function to fire when it expires |
-| `reset_timer()` | Rearm |
-| `stop_timer()` | Pause |
-| `free_timer()` | Release the handle |
-| `process()` | Poll it; reports whether it fired |
-
-`process()` is not optional: it advances the handle's clock, so a timer that is
-never polled never fires. Call it once per `PROCESS` block for every handle whose
-timers should keep running.
-
-```resiris
-v timer ModuleObject = RSBase.await()
-timer.set_timer(0.35)
-timer.on_timeout("timer_callback")
-
-PROCESS(FPS):
-	print_cmd(timer.process())
-
-fn timer_callback():
-	print_cmd("timer callback fired")
-```
-
-The interpreter supplies the current time before each object method call, then
-fires the named callback once afterwards. This is the only path by which any
-module calls back into Resiris, and it is a single non-recursive call, so a timer
-callback cannot leak stack however often it fires.
-
----
-
-## 13. Modules in general
-
-Declare them with `<include>`, comma-separated. Call a function as
-`Module.func(args)` and read a constant as `Module[NAME]`.
-
-An unknown function or constant raises `ModuleError`. The registry validates
-argument types and the returned value on your behalf; see
-[WRITING_MODULES.md](WRITING_MODULES.md#what-the-registry-checks-and-what-it-leaves-to-you)
-for exactly what it checks and what it leaves to you.
-
-Modules are the extension point for anything the language does not provide,
-including iteration.
-
----
-
-## 14. Error model
+## 11. Error model
 
 Errors are typed and carry `line N, column M` with a descriptive message.
 
@@ -381,7 +302,7 @@ host decides what happens next.
 
 ---
 
-## 15. What is not in the language
+## 12. What is not in the language
 
 Listed here so nothing comes as a surprise:
 

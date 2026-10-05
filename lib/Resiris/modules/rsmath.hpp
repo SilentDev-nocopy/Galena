@@ -1,6 +1,6 @@
 #pragma once
 
-#include "resiris/module.hpp"
+#include "System/module.hpp"
 
 namespace resiris {
 

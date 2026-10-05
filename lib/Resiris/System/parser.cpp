@@ -1,11 +1,11 @@
-#include "resiris/parser.hpp"
+#include "System/parser.hpp"
 
 #include <cstdint>
 #include <set>
 #include <unordered_map>
 #include <utility>
 
-#include "resiris/syntax_error.hpp"
+#include "System/syntax_error.hpp"
 
 namespace resiris {
 

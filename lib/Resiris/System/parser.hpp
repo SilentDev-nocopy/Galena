@@ -3,8 +3,8 @@
 #include <cstddef>
 #include <string>
 
-#include "resiris/ast.hpp"
-#include "resiris/token.hpp"
+#include "System/ast.hpp"
+#include "System/token.hpp"
 
 namespace resiris {
 
