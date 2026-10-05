@@ -6,10 +6,12 @@
 // text sink is installed: stdout here, Serial on the device. So the behaviour
 // agreement is not a convention to maintain by hand, it falls out of the shape.
 
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "galena_runtime.hpp"
 #include "generated_programs.hpp"
