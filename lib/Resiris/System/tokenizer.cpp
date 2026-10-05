@@ -1,7 +1,6 @@
 #include "System/tokenizer.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <cstdint>
 #include <unordered_map>
 
