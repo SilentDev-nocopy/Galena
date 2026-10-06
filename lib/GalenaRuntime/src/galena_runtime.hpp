@@ -20,6 +20,11 @@ struct RunOptions {
     // entry point runs six, and the host runs the same six, so a program behaves
     // identically in both places. Zero skips the lifecycle entirely.
     int process_frames = 6;
+
+    // If true, run PROCESS() in an endless loop after START(), sleeping between
+    // frames according to FPS. The loop only exits when the interpreter stops
+    // itself (e.g. an error) or its stop flag is set.
+    bool forever = false;
 };
 
 // Runs a Resiris program to completion: tokenizing, parsing, the top level, then

@@ -128,15 +128,15 @@ int run_program(const char* source, const RunOptions& options) {
         interpreter.run(program);
         cpu_seconds() += resiris::monotonic_seconds() - program_start();
 
-        // Also runs the PROCESS() lifecycle and its timers. One frame per
-        // iteration rather than one call for all of them, so RSSystem sees the
-        // time each frame cost. run_process_frames(1) in a loop does the same
-        // work in the same order as run_process_frames(n), since that function is
-        // already a loop around a single frame.
-        for (int frame = 0; frame < options.process_frames; ++frame) {
-            const double frame_start = resiris::monotonic_seconds();
-            interpreter.run_process_frames(1);
-            cpu_seconds() += resiris::monotonic_seconds() - frame_start;
+        // Also runs the PROCESS() lifecycle and its timers.
+        if (options.forever) {
+            interpreter.run_process_forever();
+        } else {
+            for (int frame = 0; frame < options.process_frames; ++frame) {
+                const double frame_start = resiris::monotonic_seconds();
+                interpreter.run_process_frames(1);
+                cpu_seconds() += resiris::monotonic_seconds() - frame_start;
+            }
         }
 
         resiris::write_text("Resiris: OK\n");

@@ -77,6 +77,8 @@ void print_usage(const char* program) {
         << "Options:\n"
         << "  --frames <N>     how many PROCESS() lifecycle frames to run\n"
         << "                   (default 6, the same as on the ESP32)\n"
+        << "  --forever, -f    run PROCESS() forever, sleeping between frames\n"
+        << "                   according to FPS\n"
         << "  --main <path>    where to read the selected program from\n"
         << "                   for --embedded (default esp32/main.cpp)\n"
         << "  --version        prints the version\n"
@@ -117,7 +119,11 @@ int main(int argc, char** argv) {
             embedded = true;
             continue;
         }
-        if (argument == "--frames" || argument == "--main") {
+        if (argument == "--frames" || argument == "--main" || argument == "--forever" || argument == "-f") {
+            if (argument == "--forever" || argument == "-f") {
+                options.forever = true;
+                continue;
+            }
             if (i + 1 >= argc) {
                 std::cerr << "galena: " << argument << " needs a value\n";
                 return kUsageError;
