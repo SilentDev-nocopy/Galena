@@ -20,12 +20,10 @@ plan does not exist yet.
 | `RSBase` module — 7 timer functions | implemented |
 | `RSSystem` module — 15 machine-fact functions, 4 portable | implemented |
 | Build-time embedding of `programs/*.resy` | implemented |
-| Resiris compiler and bytecode | not started |
 | Galena System — UI, display, input, storage | not started |
 | Custom hardware | not started |
 
-Programs are interpreted from source on the ESP32 at boot. There is no compiler
-and no bytecode yet; moving to a bytecode VM is the planned direction.
+Programs are interpreted from source on the ESP32 at boot.
 
 ## Building and running
 
@@ -142,7 +140,7 @@ The intended stack, from user program down to hardware:
 │  ┌───────────────────────────────┐  │
 │  │       Resiris Programs        │  │
 │  ├───────────────────────────────┤  │
-│  │      Galena Runtime / VM      │  │
+│  │         Galena Runtime         │  │
 │  ├───────────────────────────────┤  │
 │  │         Galena System         │  │
 │  ├───────────────────────────────┤  │
@@ -154,8 +152,7 @@ The intended stack, from user program down to hardware:
 └─────────────────────────────────────┘
 ```
 
-The top two layers are real. The runtime is an AST interpreter rather than the
-bytecode VM planned for later, and the Galena System layer has not been started.
+The top two layers are real. The runtime is an AST interpreter, and the Galena System layer has not been started.
 There is no designed firmware layer yet either; `esp32/main.cpp` is an Arduino
 sketch that boots the interpreter and runs one embedded program, which is
 scaffolding rather than the intended system. Hardware is a generic
@@ -213,7 +210,7 @@ means creating `modules/<name>.hpp` and `modules/<name>.cpp` and building.
 ## Roadmap
 
 ```text
-1. Language     → Resiris, compiler, runtime     ← current
+1. Language     → Resiris, interpreter, runtime   ← current
 2. System       → UI, input, display, storage
 3. Applications → calculator, programs, games
 4. Hardware     → ESP32-based Galena device
