@@ -1,10 +1,51 @@
-1. Először: mi az a GPIO?
-A GPIO a General Purpose Input/Output rövidítése.
+LED bekötése ESP32-höz
+======================
 
-Magyarul: általános célú bemenet/kimenet.
+1. Szükséges alkatrészek
+------------------------
+- ESP32
+- Piros LED
+- 220 Ω-os ellenállás
+- Breadboard és összekötő vezetékek (opcionális)
 
-Ezek az ESP32 programozható lábai. A programod segítségével eldöntheted, hogy egy adott GPIO:
-- Bemenet (Input): jelet fogad egy másik alkatrésztől.
-- Kimenet (Output): jelet küld egy másik alkatrésznek.
+2. Bekötés
+----------
+Kösd sorba az alkatrészeket az alábbi sorrendben:
 
+ESP32 GPIO23 ── 220 Ω ── LED anód (+)
+                            LED katód (-) ── ESP32 GND
 
+A LED hosszabb lába általában az anód, a rövidebb a katód. A LED irányérzékeny,
+ezért a polaritásra figyelni kell. Az ellenállásnak nincs polaritása.
+
+Az áramkör csak akkor működik, ha a LED és az ellenállás között zárt út vezet
+a GPIO23 kimenettől a GND-ig. A GND az áramkör közös 0 V-os referencia- és
+visszatérési pontja.
+
+3. Miért kell ellenállás?
+-------------------------
+Az ellenállás korlátozza a LED-en átfolyó áramot. Nélküle a LED vagy az ESP32
+GPIO-kimenete károsodhat. A LED-et mindig soros áramkorlátozó ellenállással
+használd.
+
+4. Példa az áram kiszámítására
+-----------------------------
+Adatok:
+- GPIO-feszültség: 3,3 V
+- A piros LED nyitófeszültsége: körülbelül 2,0 V
+- Ellenállás: 220 Ω
+
+Az ellenálláson eső feszültség:
+  U_R = 3,3 V - 2,0 V = 1,3 V
+
+Az Ohm-törvény szerint (U = R × I):
+  I = U_R / R = 1,3 V / 220 Ω ≈ 0,00591 A = 5,9 mA
+
+Ez közelítő érték; a tényleges áram a LED és az ESP32 kimenetének jellemzőitől
+is függ.
+
+5. Röviden
+----------
+- A GPIO23 vezérli a LED-et.
+- A 220 Ω-os ellenállás korlátozza az áramot.
+- A GND zárja az áramkört, és közös referencia-pontot biztosít.
