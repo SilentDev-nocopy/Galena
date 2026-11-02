@@ -1,0 +1,10 @@
+1. Először: mi az a GPIO?
+A GPIO a General Purpose Input/Output rövidítése.
+
+Magyarul: általános célú bemenet/kimenet.
+
+Ezek az ESP32 programozható lábai. A programod segítségével eldöntheted, hogy egy adott GPIO:
+- Bemenet (Input): jelet fogad egy másik alkatrésztől.
+- Kimenet (Output): jelet küld egy másik alkatrésznek.
+
+
