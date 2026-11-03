@@ -198,11 +198,11 @@ enum class ModuleTarget {
 };
 ```
 
-All three shipped modules are `EspAndPc`, and that is the right answer for each:
-`RSMath` and `RSBase` are pure computation, and `RSSystem` marks itself portable
-while refusing only the eleven functions that read the ESP32. So the check is
-still unexercised — see the note on the hook below before relying on it. The
-answer is one line:
+`RSMath`, `RSBase` and `RSConvert` are `EspAndPc` because they are pure
+computation. `RSSystem` is portable too, though it refuses the eleven functions
+that read the ESP32. `RSSignal` is `EspOnly`, because its whole job is the GPIO
+peripheral; on a PC the registry refuses it at `<include>`. The answer is one
+line:
 
 ```cpp
 ModuleTarget target() const override { return ModuleTarget::EspAndPc; }

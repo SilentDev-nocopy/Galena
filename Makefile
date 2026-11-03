@@ -36,6 +36,10 @@ NATIVE_DEPS := $(RUNTIME_DIR)/generated_programs.hpp $(RUNTIME_DIR)/generated_mo
 # script by hand in that case, or build the firmware, which always regenerates.
 MODULE_HEADERS := $(wildcard $(MODULES_DIR)/*.hpp)
 
+# Programs that include one of these modules need the ESP32 and are skipped by
+# `make test` on the host. Keep the list in sync with the EspOnly modules.
+ESP_ONLY_MODULES := RSSignal
+
 .PHONY: all run embedded test generate clean
 
 all: $(BINARY)
@@ -63,10 +67,18 @@ run: $(BINARY)
 embedded: $(BINARY)
 	@./$(BINARY) --embedded
 
-# runs every programs/*.resy, with no output
+# runs every programs/*.resy that can run on a PC, with no output
 test: $(BINARY)
 	@fail=0; \
 	for program in programs/*.resy; do \
+		skip=0; \
+		for module in $(ESP_ONLY_MODULES); do \
+			if grep -q "<include>.*$$module" "$$program"; then skip=1; fi; \
+		done; \
+		if [ $$skip -eq 1 ]; then \
+			echo "  skip  $$program (ESP only)"; \
+			continue; \
+		fi; \
 		if ./$(BINARY) $$program > /dev/null; then \
 			echo "  ok    $$program"; \
 		else \

@@ -1,0 +1,37 @@
+## RSSignal digital loopback test for the ESP32.
+##
+## Wiring required: connect GPIO4 to GPIO5 with a jumper wire.
+##
+## GPIO4 is the output and GPIO5 is the input. The test drives GPIO4 low and
+## high and reads the level back on GPIO5, so it checks the real pad and the
+## wire, not just the module's bookkeeping.
+
+<include> RSSignal
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+v drive int = RSSignal[GENERAL_DIGITAL_GPIO4]
+v sense int = RSSignal[BOOTSTRAP_GPIO5]
+
+check("drive output", RSSignal.set_signal_mode(drive, true) == true)
+check("sense input", RSSignal.set_signal_mode(sense, false) == true)
+
+RSSignal.stop_signal(drive)
+check("low after stop", RSSignal.get_digital_data(sense) == false)
+
+RSSignal.send_signal(drive)
+check("high after send", RSSignal.get_digital_data(sense) == true)
+
+RSSignal.stop_signal(drive)
+check("low after second stop", RSSignal.get_digital_data(sense) == false)
+
+print_cmd("RSSignal loopback failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0

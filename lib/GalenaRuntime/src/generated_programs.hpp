@@ -178,6 +178,304 @@ probe(5)
 print_cmd("done")
 )RESY";
 
+// programs/rsconvert_test.resy
+constexpr const char* rsconvert_test_resy =
+R"RESY(## RSConvert self-test.
+##
+## Portable: this program runs on a PC with `make run FILE=...` and on the
+## ESP32. Every check prints PASS or FAIL on its own line; a failing check makes
+## the program stop with an error so `make test` also sees the failure.
+
+<include> RSConvert
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+fn check_str(name, got, want):
+	check(name, got == want)
+
+check("module name", RSConvert[NAME] == "RSConvert")
+check("no constants", RSConvert[VARIABLES] == "")
+
+## Text encodings.
+check_str("base64 encode", RSConvert.to_base64("Resiris"), "UmVzaXJpcw==")
+check_str("base64 decode", RSConvert.from_base64("UmVzaXJpcw=="), "Resiris")
+check_str("base64 empty", RSConvert.to_base64(""), "")
+check_str("hex encode", RSConvert.text_to_hex("Hi"), "4869")
+check_str("hex decode", RSConvert.hex_to_text("4869"), "Hi")
+check_str("url encode", RSConvert.url_encode("hello world"), "hello%20world")
+check_str("url decode", RSConvert.url_decode("hello%20world"), "hello world")
+check_str("url unreserved", RSConvert.url_encode("a-b_c.d~e"), "a-b_c.d~e")
+check_str("query encode", RSConvert.url_query_encode("hello world"), "hello+world")
+check_str("query decode", RSConvert.url_query_decode("hello+world"), "hello world")
+check_str("binary encode", RSConvert.text_to_binary("A"), "01000001")
+check_str("binary decode", RSConvert.binary_to_text("01000001"), "A")
+
+## Numeric bases.
+check_str("hex integer", RSConvert.integer_to_hex(255), "ff")
+check("hex parse", RSConvert.hex_to_integer("0xFF") == 255)
+check_str("binary integer", RSConvert.integer_to_binary(10), "1010")
+check("binary parse", RSConvert.binary_to_integer("1010") == 10)
+check_str("octal integer", RSConvert.integer_to_octal(64), "100")
+check("octal parse", RSConvert.octal_to_integer("100") == 64)
+check_str("base 16 integer", RSConvert.integer_to_base(255, 16), "ff")
+check("base 16 parse", RSConvert.base_to_integer("ff", 16) == 255)
+
+## Escaping.
+v json_text string = "say \"hello\"\n"
+check_str("json roundtrip", RSConvert.json_unescape(RSConvert.json_escape(json_text)), json_text)
+check_str("json unicode escape", RSConvert.json_unescape("\\u0041"), "A")
+check_str("html escape", RSConvert.html_escape("<a & \"b\">"), "&lt;a &amp; &quot;b&quot;&gt;")
+check_str("html roundtrip", RSConvert.html_unescape(RSConvert.html_escape("<a & \"b\">")), "<a & \"b\">")
+check_str("xml escape", RSConvert.xml_escape("'x'"), "&apos;x&apos;")
+check_str("xml roundtrip", RSConvert.xml_unescape(RSConvert.xml_escape("'x'")), "'x'")
+check_str("csv escape", RSConvert.csv_escape("hello, world"), "\"hello, world\"")
+check_str("csv roundtrip", RSConvert.csv_unescape(RSConvert.csv_escape("hello, world")), "hello, world")
+check_str("csv quote escape", RSConvert.csv_escape("a\"b"), "\"a\"\"b\"")
+
+## Characters, numbers, colors and time.
+check("ascii parse", RSConvert.ascii_to_integer("A") == 65)
+check_str("ascii encode", RSConvert.integer_to_ascii(65), "A")
+check_str("roman encode", RSConvert.integer_to_roman(2024), "MMXXIV")
+check("roman parse", RSConvert.roman_to_integer("MMXXIV") == 2024)
+check_str("rgb to hex", RSConvert.rgb_to_hex(255, 128, 0), "#ff8000")
+check("hex to red", RSConvert.hex_to_red("#ff8000") == 255)
+check("hex to green", RSConvert.hex_to_green("#ff8000") == 128)
+check("hex to blue", RSConvert.hex_to_blue("#ff8000") == 0)
+check_str("duration encode", RSConvert.seconds_to_duration(3661), "01:01:01")
+check("duration parse", RSConvert.duration_to_seconds("01:01:01") == 3661)
+check("duration long hours", RSConvert.duration_to_seconds("100:00:00") == 360000)
+
+## Sizes.
+check_str("decimal size", RSConvert.bytes_to_decimal_size(1500000), "1.5 MB")
+check_str("binary size", RSConvert.bytes_to_binary_size(1572864), "1.5 MiB")
+check("storage size", RSConvert.storage_size_to_bytes("1.5 MiB") == 1572864)
+check("storage bits", RSConvert.storage_size_to_bytes("8 bit") == 1)
+check("bytes to bits", RSConvert.bytes_to_bits(4) == 32)
+check("bits to bytes", RSConvert.bits_to_bytes(32) == 4)
+
+## Byte order and integer bit patterns.
+check_str("big endian bytes", RSConvert.integer_to_bytes(4660, 2, "big"), "1234")
+check_str("little endian bytes", RSConvert.integer_to_bytes(4660, 2, "little"), "3412")
+check("big endian integer", RSConvert.bytes_to_integer("1234", "big") == 4660)
+check("little endian integer", RSConvert.bytes_to_integer("3412", "little") == 4660)
+check("signed to unsigned", RSConvert.signed_to_unsigned(-1, 8) == 255)
+check("unsigned to signed", RSConvert.unsigned_to_signed(255, 8) == -1)
+check("signed minimum", RSConvert.signed_to_unsigned(-128, 8) == 128)
+check("unsigned sign bit", RSConvert.unsigned_to_signed(128, 8) == -128)
+check("signed 63-bit maximum", RSConvert.unsigned_to_signed(9223372036854775807, 63) == -1)
+
+## Floating point.
+check_str("float32 bits", RSConvert.float_to_bits(1.5, 32), "00111111110000000000000000000000")
+check("float32 parse", RSConvert.bits_to_float("00111111110000000000000000000000") == 1.5)
+check_str("float16 bits", RSConvert.float_to_bits(1.5, 16), "0011111000000000")
+check("float16 parse", RSConvert.bits_to_float("0011111000000000") == 1.5)
+check_str("float64 bits", RSConvert.float_to_bits(1.5, 64), "0011111111111000000000000000000000000000000000000000000000000000")
+check("float64 parse", RSConvert.bits_to_float("0011111111111000000000000000000000000000000000000000000000000000") == 1.5)
+
+## Gray, BCD, LEB128 and ZigZag.
+check_str("gray encode", RSConvert.integer_to_gray(10, 4), "1111")
+check("gray parse", RSConvert.gray_to_integer("1111") == 10)
+check_str("bcd encode", RSConvert.integer_to_bcd(42), "01000010")
+check("bcd parse", RSConvert.bcd_to_integer("01000010") == 42)
+check_str("leb128 encode", RSConvert.integer_to_leb128(300), "ac02")
+check("leb128 parse", RSConvert.leb128_to_integer("ac02") == 300)
+check("zigzag encode", RSConvert.signed_to_zigzag(-10) == 19)
+check("zigzag parse", RSConvert.zigzag_to_signed(19) == -10)
+
+## Fixed point, RGB565, PCM, offset binary and bit fields.
+check("fixed encode", RSConvert.decimal_to_fixed(1.5, 8) == 384)
+check("fixed decode", RSConvert.fixed_to_decimal(384, 8) == 1.5)
+check("rgb565 encode", RSConvert.rgb888_to_rgb565(255, 128, 0) == 64512)
+check("rgb565 red", RSConvert.rgb565_to_red(64512) == 255)
+check("rgb565 green", RSConvert.rgb565_to_green(64512) == 130)
+check("rgb565 blue", RSConvert.rgb565_to_blue(64512) == 0)
+check_str("pcm little", RSConvert.pcm_sample_to_bytes(-1000, 16, "little"), "18fc")
+check_str("pcm big", RSConvert.pcm_sample_to_bytes(-1000, 16, "big"), "fc18")
+check("pcm parse", RSConvert.bytes_to_pcm_sample("18fc", 16, "little") == -1000)
+check("offset binary encode", RSConvert.signed_to_offset_binary(-1000, 16) == 31768)
+check("offset binary parse", RSConvert.offset_binary_to_signed(31768, 16) == -1000)
+check("bit extract", RSConvert.extract_bit_field(42, 1, 3) == 5)
+check("bit replace", RSConvert.replace_bit_field(42, 1, 3, 2) == 36)
+
+## Newlines.
+check_str("newlines unchanged", RSConvert.newline_normalize("a\nb\n"), "a\nb\n")
+
+print_cmd("RSConvert failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0
+)RESY";
+
+// programs/rssignal_adc_test.resy
+constexpr const char* rssignal_adc_test_resy =
+R"RESY(## RSSignal ADC loopback test for the ESP32.
+##
+## Wiring required: connect GPIO25 to GPIO32 with a jumper wire.
+##
+## GPIO25 is a digital output and GPIO32 is an ADC1 input. Driving GPIO25 low
+## and high makes the ADC reading follow the pin, so this checks the analog path
+## as well as the digital output.
+
+<include> RSSignal
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+v drive int = RSSignal[GENERAL_DIGITAL_GPIO25]
+v adc int = RSSignal[ADC1_WIFI_SAFE_GPIO32]
+
+check("drive output", RSSignal.set_signal_mode(drive, true) == true)
+check("adc input", RSSignal.set_signal_mode(adc, false) == true)
+
+RSSignal.stop_signal(drive)
+check("adc near ground", RSSignal.get_analog_data(adc) < 1000.0)
+
+RSSignal.send_signal(drive)
+check("adc near supply", RSSignal.get_analog_data(adc) > 3000.0)
+
+RSSignal.stop_signal(drive)
+check("adc back near ground", RSSignal.get_analog_data(adc) < 1000.0)
+
+print_cmd("RSSignal ADC failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0
+)RESY";
+
+// programs/rssignal_input_only_error.resy
+constexpr const char* rssignal_input_only_error_resy =
+R"RESY(## RSSignal negative test for the ESP32.
+##
+## This program is SUPPOSED to stop with an error. GPIO34, 35, 36 and 39 are
+## input-only, so asking for one as an output must be refused.
+##
+## Expected result on the serial monitor:
+##   ResirisError: ... RSSignal.set_signal_mode: GPIO34 is input-only
+##
+## If the line below instead prints "FAIL", the module accepted an output mode
+## on an input-only pin.
+
+<include> RSSignal
+
+v pin int = RSSignal[ADC1_WIFI_SAFE_GPIO34]
+
+RSSignal.set_signal_mode(pin, true)
+
+print_cmd("FAIL: GPIO34 accepted as an output")
+)RESY";
+
+// programs/rssignal_loopback_test.resy
+constexpr const char* rssignal_loopback_test_resy =
+R"RESY(## RSSignal digital loopback test for the ESP32.
+##
+## Wiring required: connect GPIO4 to GPIO5 with a jumper wire.
+##
+## GPIO4 is the output and GPIO5 is the input. The test drives GPIO4 low and
+## high and reads the level back on GPIO5, so it checks the real pad and the
+## wire, not just the module's bookkeeping.
+
+<include> RSSignal
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+v drive int = RSSignal[GENERAL_DIGITAL_GPIO4]
+v sense int = RSSignal[BOOTSTRAP_GPIO5]
+
+check("drive output", RSSignal.set_signal_mode(drive, true) == true)
+check("sense input", RSSignal.set_signal_mode(sense, false) == true)
+
+RSSignal.stop_signal(drive)
+check("low after stop", RSSignal.get_digital_data(sense) == false)
+
+RSSignal.send_signal(drive)
+check("high after send", RSSignal.get_digital_data(sense) == true)
+
+RSSignal.stop_signal(drive)
+check("low after second stop", RSSignal.get_digital_data(sense) == false)
+
+print_cmd("RSSignal loopback failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0
+)RESY";
+
+// programs/rssignal_test.resy
+constexpr const char* rssignal_test_resy =
+R"RESY(## RSSignal self-test for the ESP32.
+##
+## This program is EspOnly: it must run on the device. Every check prints PASS or
+## FAIL on its own line; a failing check makes the program stop with an error.
+## No external wiring is needed for this file.
+
+<include> RSSignal
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+## The exported pin map is the same one the datasheet uses.
+check("GPIO0 constant", RSSignal[BOOTSTRAP_GPIO0] == 0)
+check("GPIO4 constant", RSSignal[GENERAL_DIGITAL_GPIO4] == 4)
+check("GPIO5 constant", RSSignal[BOOTSTRAP_GPIO5] == 5)
+check("GPIO27 constant", RSSignal[GENERAL_DIGITAL_GPIO27] == 27)
+check("GPIO32 constant", RSSignal[ADC1_WIFI_SAFE_GPIO32] == 32)
+check("GPIO39 constant", RSSignal[ADC1_WIFI_SAFE_GPIO39] == 39)
+
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO4]
+
+## Mode starts as input, can be switched both ways, and is reported back.
+check("default mode", RSSignal.get_signal_mode(pin) == false)
+check("set output", RSSignal.set_signal_mode(pin, true) == true)
+check("output mode", RSSignal.get_signal_mode(pin) == true)
+check("send signal", RSSignal.send_signal(pin) == true)
+check("stop signal", RSSignal.stop_signal(pin) == true)
+check("send again", RSSignal.send_signal(pin) == true)
+check("stop again", RSSignal.stop_signal(pin) == true)
+check("set input", RSSignal.set_signal_mode(pin, false) == true)
+check("input mode", RSSignal.get_signal_mode(pin) == false)
+
+## Input-only pins accept input mode but never output mode.
+v input_only int = RSSignal[ADC1_WIFI_SAFE_GPIO34]
+check("input-only as input", RSSignal.set_signal_mode(input_only, false) == true)
+check("input-only mode", RSSignal.get_signal_mode(input_only) == false)
+
+## Digital reads return bool even without wiring.
+check("digital type", RSSignal.get_digital_data(pin).type() == "bool")
+
+## The ADC pins return a float in the ESP32's 12-bit range. A floating pin has
+## no predictable level, so only the range and type are checked here.
+v adc int = RSSignal[ADC1_WIFI_SAFE_GPIO32]
+check("analog type", RSSignal.get_analog_data(adc).type() == "float")
+check("analog low bound", RSSignal.get_analog_data(adc) >= 0.0)
+check("analog high bound", RSSignal.get_analog_data(adc) <= 4095.0)
+
+print_cmd("RSSignal failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0
+)RESY";
+
 // programs/rssystem.resy
 constexpr const char* rssystem_resy =
 R"RESY(<include> RSSystem
@@ -223,11 +521,16 @@ struct ResyProgram {
 constexpr ResyProgram kResyPrograms[] = {
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
+    {"programs/rsconvert_test.resy", "rsconvert_test", "rsconvert_test_resy", rsconvert_test_resy},
+    {"programs/rssignal_adc_test.resy", "rssignal_adc_test", "rssignal_adc_test_resy", rssignal_adc_test_resy},
+    {"programs/rssignal_input_only_error.resy", "rssignal_input_only_error", "rssignal_input_only_error_resy", rssignal_input_only_error_resy},
+    {"programs/rssignal_loopback_test.resy", "rssignal_loopback_test", "rssignal_loopback_test_resy", rssignal_loopback_test_resy},
+    {"programs/rssignal_test.resy", "rssignal_test", "rssignal_test_resy", rssignal_test_resy},
     {"programs/rssystem.resy", "rssystem", "rssystem_resy", rssystem_resy},
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 4;
+constexpr int kResyProgramCount = 9;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {

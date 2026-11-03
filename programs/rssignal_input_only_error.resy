@@ -1,0 +1,18 @@
+## RSSignal negative test for the ESP32.
+##
+## This program is SUPPOSED to stop with an error. GPIO34, 35, 36 and 39 are
+## input-only, so asking for one as an output must be refused.
+##
+## Expected result on the serial monitor:
+##   ResirisError: ... RSSignal.set_signal_mode: GPIO34 is input-only
+##
+## If the line below instead prints "FAIL", the module accepted an output mode
+## on an input-only pin.
+
+<include> RSSignal
+
+v pin int = RSSignal[ADC1_WIFI_SAFE_GPIO34]
+
+RSSignal.set_signal_mode(pin, true)
+
+print_cmd("FAIL: GPIO34 accepted as an output")

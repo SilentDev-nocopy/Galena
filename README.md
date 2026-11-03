@@ -10,7 +10,7 @@ designed together. User programs never touch the ESP32 hardware directly.
 ## Where the project stands
 
 The work so far is the language and its runtime. The tokenizer, parser and
-interpreter run on the ESP32, along with three built-in modules. The rest of the
+interpreter run on the ESP32, along with five built-in modules. The rest of the
 plan does not exist yet.
 
 | Piece | State |
@@ -19,6 +19,8 @@ plan does not exist yet.
 | `RSMath` module — 29 math functions, `PI`, `E` | implemented |
 | `RSBase` module — 7 timer functions | implemented |
 | `RSSystem` module — 15 machine-fact functions, 4 portable | implemented |
+| `RSConvert` module — 68 text, number and encoding conversions | implemented |
+| `RSSignal` module — 6 GPIO functions and 26 pin constants | implemented, ESP32 only |
 | Build-time embedding of `programs/*.resy` | implemented |
 | Galena System — UI, display, input, storage | not started |
 | Custom hardware | not started |
@@ -60,7 +62,7 @@ debugged without hardware:
 make                          # build build/galena
 make run FILE=programs/features.resy   # run any .resy file
 make embedded                 # run exactly what the current device build runs
-make test                     # run every programs/*.resy
+make test                     # run every PC-capable programs/*.resy
 ```
 
 Both targets share one pipeline, `galena::run_program` in
@@ -78,6 +80,36 @@ Exit codes are 0 for success, 1 when the program raised, 2 for a usage error.
 no `PROCESS` block behaves the same at any count, but a timer-driven one needs
 more frames to see its callbacks fire. Raise it when iterating on a program
 whose timers you want to watch repeatedly.
+
+`make test` skips programs that include an `EspOnly` module, because those can
+only run on the device. The skip list is `ESP_ONLY_MODULES` in the `Makefile`;
+add a module there when a new hardware-only module appears.
+
+### ESP32 hardware tests
+
+The hardware tests are ordinary Resiris programs in `programs/`, so they use the
+same build menu as every other program:
+
+```bash
+pio run -t upload        # choose one of the test programs from the menu
+pio device monitor       # 115200 baud, watch the PASS/FAIL lines
+```
+
+Each test prints one `PASS` or `FAIL` line per check and ends with a failure
+count. A failing check stops the program with an error, so a run that ends with
+`Resiris: OK` and `failures: 0` passed completely.
+
+| Program | Needs wiring | What it checks |
+|---|---|---|
+| `programs/rsconvert_test.resy` | none, also runs on a PC | the portable `RSConvert` functions |
+| `programs/rssignal_test.resy` | none | GPIO constants, mode switching, output calls, ADC range |
+| `programs/rssignal_loopback_test.resy` | GPIO4 ↔ GPIO5 | real output-to-input digital loopback |
+| `programs/rssignal_adc_test.resy` | GPIO25 ↔ GPIO32 | digital output driving an ADC input |
+| `programs/rssignal_input_only_error.resy` | none | GPIO34 must be refused as an output |
+
+The negative test is supposed to stop with an error; its header shows the exact
+message to expect. The loopback tests need the listed jumper wire, because there
+is no way to verify a real pad without one.
 
 ## The language
 
@@ -128,6 +160,11 @@ The language is also maintained separately at
 | `programs/test.resy` | minimal smoke test |
 | `programs/rssystem.resy` | the portable part of `RSSystem`, so it runs on both targets |
 | `programs/recursion_depth.resy` | recursion-depth regression test guarding the per-frame stack cost |
+| `programs/rsconvert_test.resy` | portable `RSConvert` self-test |
+| `programs/rssignal_test.resy` | `RSSignal` API and state test for the ESP32 |
+| `programs/rssignal_loopback_test.resy` | GPIO4 ↔ GPIO5 digital loopback test |
+| `programs/rssignal_adc_test.resy` | GPIO25 → GPIO32 ADC loopback test |
+| `programs/rssignal_input_only_error.resy` | expected-error test: GPIO34 cannot be an output |
 
 ## Architecture
 

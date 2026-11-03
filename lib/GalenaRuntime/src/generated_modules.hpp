@@ -8,7 +8,9 @@
 #include "System/module.hpp"
 
 #include "modules/rsbase.hpp"
+#include "modules/rsconvert.hpp"
 #include "modules/rsmath.hpp"
+#include "modules/rssignal.hpp"
 #include "modules/rssystem.hpp"
 
 namespace galena_generated {
@@ -20,8 +22,12 @@ inline std::vector<std::shared_ptr<resiris::Module>> make_modules() {
     return std::vector<std::shared_ptr<resiris::Module>>{
         // modules/rsbase.hpp
         std::make_shared<resiris::RsBaseModule>(),
+        // modules/rsconvert.hpp
+        std::make_shared<resiris::RsConvertModule>(),
         // modules/rsmath.hpp
         std::make_shared<resiris::RsMathModule>(),
+        // modules/rssignal.hpp
+        std::make_shared<resiris::RsSignalModule>(),
         // modules/rssystem.hpp
         std::make_shared<resiris::RsSystemModule>(),
     };
@@ -30,10 +36,12 @@ inline std::vector<std::shared_ptr<resiris::Module>> make_modules() {
 // The class each file contributed, for build messages and tests.
 constexpr const char* kModuleSources[] = {
     "modules/rsbase.hpp",
+    "modules/rsconvert.hpp",
     "modules/rsmath.hpp",
+    "modules/rssignal.hpp",
     "modules/rssystem.hpp",
 };
 
-constexpr int kModuleCount = 3;
+constexpr int kModuleCount = 5;
 
 } // namespace galena_generated

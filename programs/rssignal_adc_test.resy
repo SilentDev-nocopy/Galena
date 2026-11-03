@@ -1,0 +1,37 @@
+## RSSignal ADC loopback test for the ESP32.
+##
+## Wiring required: connect GPIO25 to GPIO32 with a jumper wire.
+##
+## GPIO25 is a digital output and GPIO32 is an ADC1 input. Driving GPIO25 low
+## and high makes the ADC reading follow the pin, so this checks the analog path
+## as well as the digital output.
+
+<include> RSSignal
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+v drive int = RSSignal[GENERAL_DIGITAL_GPIO25]
+v adc int = RSSignal[ADC1_WIFI_SAFE_GPIO32]
+
+check("drive output", RSSignal.set_signal_mode(drive, true) == true)
+check("adc input", RSSignal.set_signal_mode(adc, false) == true)
+
+RSSignal.stop_signal(drive)
+check("adc near ground", RSSignal.get_analog_data(adc) < 1000.0)
+
+RSSignal.send_signal(drive)
+check("adc near supply", RSSignal.get_analog_data(adc) > 3000.0)
+
+RSSignal.stop_signal(drive)
+check("adc back near ground", RSSignal.get_analog_data(adc) < 1000.0)
+
+print_cmd("RSSignal ADC failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0

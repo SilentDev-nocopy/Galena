@@ -1,0 +1,56 @@
+## RSSignal self-test for the ESP32.
+##
+## This program is EspOnly: it must run on the device. Every check prints PASS or
+## FAIL on its own line; a failing check makes the program stop with an error.
+## No external wiring is needed for this file.
+
+<include> RSSignal
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+## The exported pin map is the same one the datasheet uses.
+check("GPIO0 constant", RSSignal[BOOTSTRAP_GPIO0] == 0)
+check("GPIO4 constant", RSSignal[GENERAL_DIGITAL_GPIO4] == 4)
+check("GPIO5 constant", RSSignal[BOOTSTRAP_GPIO5] == 5)
+check("GPIO27 constant", RSSignal[GENERAL_DIGITAL_GPIO27] == 27)
+check("GPIO32 constant", RSSignal[ADC1_WIFI_SAFE_GPIO32] == 32)
+check("GPIO39 constant", RSSignal[ADC1_WIFI_SAFE_GPIO39] == 39)
+
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO4]
+
+## Mode starts as input, can be switched both ways, and is reported back.
+check("default mode", RSSignal.get_signal_mode(pin) == false)
+check("set output", RSSignal.set_signal_mode(pin, true) == true)
+check("output mode", RSSignal.get_signal_mode(pin) == true)
+check("send signal", RSSignal.send_signal(pin) == true)
+check("stop signal", RSSignal.stop_signal(pin) == true)
+check("send again", RSSignal.send_signal(pin) == true)
+check("stop again", RSSignal.stop_signal(pin) == true)
+check("set input", RSSignal.set_signal_mode(pin, false) == true)
+check("input mode", RSSignal.get_signal_mode(pin) == false)
+
+## Input-only pins accept input mode but never output mode.
+v input_only int = RSSignal[ADC1_WIFI_SAFE_GPIO34]
+check("input-only as input", RSSignal.set_signal_mode(input_only, false) == true)
+check("input-only mode", RSSignal.get_signal_mode(input_only) == false)
+
+## Digital reads return bool even without wiring.
+check("digital type", RSSignal.get_digital_data(pin).type() == "bool")
+
+## The ADC pins return a float in the ESP32's 12-bit range. A floating pin has
+## no predictable level, so only the range and type are checked here.
+v adc int = RSSignal[ADC1_WIFI_SAFE_GPIO32]
+check("analog type", RSSignal.get_analog_data(adc).type() == "float")
+check("analog low bound", RSSignal.get_analog_data(adc) >= 0.0)
+check("analog high bound", RSSignal.get_analog_data(adc) <= 4095.0)
+
+print_cmd("RSSignal failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0
