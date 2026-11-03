@@ -1,0 +1,6 @@
+<include> RSSignal
+
+v pin int = RSSignal[GENERAL_DIGITAL_GPI23]
+RSSignal.set_signal_mode(pin, true)
+RSSignal.send_signal(pin)
+print_cmd("Signal sent on " + str(pin))

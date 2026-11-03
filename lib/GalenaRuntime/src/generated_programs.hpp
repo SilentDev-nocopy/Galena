@@ -511,6 +511,16 @@ v result int = x + y
 print_cmd(result)
 )RESY";
 
+// programs/test_signal_sending.resy
+constexpr const char* test_signal_sending_resy =
+R"RESY(<include> RSSignal
+
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO4]
+RSSignal.set_signal_mode(pin, true)
+RSSignal.send_signal(pin)
+print_cmd("Signal sent on " + str(pin))
+)RESY";
+
 struct ResyProgram {
     const char* file;
     const char* name;
@@ -528,9 +538,10 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/rssignal_test.resy", "rssignal_test", "rssignal_test_resy", rssignal_test_resy},
     {"programs/rssystem.resy", "rssystem", "rssystem_resy", rssystem_resy},
     {"programs/test.resy", "test", "test_resy", test_resy},
+    {"programs/test_signal_sending.resy", "test_signal_sending", "test_signal_sending_resy", test_signal_sending_resy},
 };
 
-constexpr int kResyProgramCount = 9;
+constexpr int kResyProgramCount = 10;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {

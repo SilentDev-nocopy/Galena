@@ -44,16 +44,22 @@ features, where a new module goes.
 | `modules/rsmath.hpp` / `modules/rsmath.cpp` | `RsMathModule`, the simplest real module |
 | `modules/rsbase.hpp` / `modules/rsbase.cpp` | `RsBaseModule`, a stateful module with object handles |
 | `modules/rssystem.hpp` / `modules/rssystem.cpp` | `RsSystemModule`, a module that reads the machine instead of the script |
+| `modules/rsconvert.hpp` / `modules/rsconvert.cpp` | `RsConvertModule`, text and numeric conversions |
+| `modules/rssignal.hpp` / `modules/rssignal.cpp` | `RsSignalModule`, ESP32 GPIO and ADC access |
 
 Each header sits beside the `.cpp` that implements it, and both are reached from
 the `lib/Resiris/` folder: `#include "System/module.hpp"`,
 `#include "modules/rsmath.hpp"`.
 
-A module is **two files in `modules/`** and nothing else.
-`scripts/generate_modules.py` reads every header in that folder before each
-build and writes the registry contents into `generated_modules.hpp`, so a new
-module ships on the ESP32 and on a PC at the same time without any further edit.
-See [Registering it](#registering-it) for what the folder has to look like.
+A module implementation is **two C++ files in `modules/`**. Give each module
+its own user-facing reference at `modules/<ModuleName>.md`, then add its link
+to the [module index](MODULES.md). The documentation is not used by the build.
+
+`scripts/generate_modules.py` reads every header in `modules/` before each build
+and writes the registry contents into
+`lib/GalenaRuntime/src/generated_modules.hpp`. A new module is therefore
+registered on PC and ESP32 without a separate registry edit. See
+[Registering it](#registering-it) for the source-file requirements.
 
 `RSSystem` is the one to read for a module that needs something the language
 cannot supply: facts about the host. Its two host-measured values — `uptime` and
@@ -268,7 +274,8 @@ job is to show the shape of a real module: the declarations, the dispatch, the
 signature checks, an exported constant, an object handle with real state, and
 how failures are reported.
 
-Save the two files as `tutorial.hpp` and `tutorial.cpp`.
+Save the implementation as `tutorial.hpp` and `tutorial.cpp`; also create
+`Tutorial.md` in the same folder to document the script-facing API.
 
 ### modules/tutorial.hpp
 
@@ -424,9 +431,11 @@ Value TutorialModule::get_constant(const std::string& name) const {
 
 ### Registering it
 
-Save both files as `lib/Resiris/modules/tutorial.hpp` and
-`lib/Resiris/modules/tutorial.cpp`, and the module is registered. There is
-nothing else to do.
+Save the implementation files as `lib/Resiris/modules/tutorial.hpp` and
+`lib/Resiris/modules/tutorial.cpp`, and create
+`lib/Resiris/modules/Tutorial.md`. The generator registers the C++ module
+automatically. Add the documentation link to `lib/Resiris/MODULES.md`; no
+additional registry edit is needed.
 
 `scripts/generate_modules.py` runs before every build and writes the folder into
 `lib/GalenaRuntime/src/generated_modules.hpp`:
@@ -437,7 +446,9 @@ nothing else to do.
 inline std::vector<std::shared_ptr<resiris::Module>> make_modules() {
     return std::vector<std::shared_ptr<resiris::Module>>{
         std::make_shared<resiris::RsBaseModule>(),
+        std::make_shared<resiris::RsConvertModule>(),
         std::make_shared<resiris::RsMathModule>(),
+        std::make_shared<resiris::RsSignalModule>(),
         std::make_shared<resiris::RsSystemModule>(),
         std::make_shared<resiris::TutorialModule>(),   // added
     };

@@ -144,8 +144,8 @@ has to walk a collection, sort, search or parse belongs in a module.
   differently from C or Python.
 - [lib/Resiris/HOW_TO_USE.md](lib/Resiris/HOW_TO_USE.md) — the full reference,
   covering every type and statement, scoping, and the error model.
-- [lib/Resiris/MODULES.md](lib/Resiris/MODULES.md) — one section per built-in
-  module, saying what it offers and what it refuses.
+- [lib/Resiris/MODULES.md](lib/Resiris/MODULES.md) — index of the built-in
+  modules, each with its own API reference under `lib/Resiris/modules/`.
 - [lib/Resiris/WRITING_MODULES.md](lib/Resiris/WRITING_MODULES.md) — writing a
   module in C++.
 

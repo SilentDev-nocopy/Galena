@@ -3,7 +3,7 @@
 The full reference: lexical structure, types, statements, scoping, the error
 model, and the syntax for reaching a module. The
 [README](README.md) explains why the language is shaped the way it is,
-[MODULES.md](MODULES.md) lists what each built-in module offers, and
+[MODULES.md](MODULES.md) links to the reference for each built-in module, and
 `WRITING_MODULES.md` is for writing modules in C++. Read the README first if you
 have not.
 
@@ -273,8 +273,8 @@ stack will allow deeper nesting.
 | `Module.func(args)` | Call a module function |
 | `Module[NAME]` | Read a module constant |
 
-Which module you are calling, and what it offers, is in
-[MODULES.md](MODULES.md); writing one is in
+Which module you are calling, and what it offers, is in its module reference
+linked from [MODULES.md](MODULES.md); writing one is covered in
 [WRITING_MODULES.md](WRITING_MODULES.md).
 
 ---
