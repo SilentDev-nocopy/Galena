@@ -5,6 +5,36 @@
 
 namespace resiris_programs {
 
+// programs/blinking.resy
+constexpr const char* blinking_resy =
+R"RESY(<include> RSSignal, RSBase
+
+c FPS float = 10.0
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v signal_on bool = true
+v timer ModuleObject = RSBase.await()
+
+v cooldown int = 1
+
+fn toggle_signal():
+	if signal_on:
+		RSSignal.stop_signal(pin)
+		signal_on = false
+	else:
+		RSSignal.send_signal(pin)
+		signal_on = true
+	timer.reset_timer()
+
+START():
+	RSSignal.set_signal_mode(pin, true)
+	RSSignal.send_signal(pin)
+	timer.set_timer(cooldown)
+	timer.on_timeout("toggle_signal")
+
+PROCESS(FPS):
+	timer.process()
+)RESY";
+
 // programs/features.resy
 constexpr const char* features_resy =
 R"RESY(<include> RSMath, RSBase
@@ -513,12 +543,32 @@ print_cmd(result)
 
 // programs/test_signal_sending.resy
 constexpr const char* test_signal_sending_resy =
-R"RESY(<include> RSSignal
+R"RESY(<include> RSSignal, RSBase
 
-v pin int = RSSignal[GENERAL_DIGITAL_GPIO4]
-RSSignal.set_signal_mode(pin, true)
-RSSignal.send_signal(pin)
-print_cmd("Signal sent on " + str(pin))
+c FPS float = 10.0
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v signal_on bool = true
+v timer ModuleObject = RSBase.await()
+
+v cooldown int = 1
+
+fn toggle_signal():
+	if signal_on:
+		RSSignal.stop_signal(pin)
+		signal_on = false
+	else:
+		RSSignal.send_signal(pin)
+		signal_on = true
+	timer.reset_timer()
+
+START():
+	RSSignal.set_signal_mode(pin, true)
+	RSSignal.send_signal(pin)
+	timer.set_timer(cooldown)
+	timer.on_timeout("toggle_signal")
+
+PROCESS(FPS):
+	timer.process()
 )RESY";
 
 struct ResyProgram {
@@ -529,6 +579,7 @@ struct ResyProgram {
 };
 
 constexpr ResyProgram kResyPrograms[] = {
+    {"programs/blinking.resy", "blinking", "blinking_resy", blinking_resy},
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
     {"programs/rsconvert_test.resy", "rsconvert_test", "rsconvert_test_resy", rsconvert_test_resy},
@@ -541,7 +592,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/test_signal_sending.resy", "test_signal_sending", "test_signal_sending_resy", test_signal_sending_resy},
 };
 
-constexpr int kResyProgramCount = 10;
+constexpr int kResyProgramCount = 11;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {
