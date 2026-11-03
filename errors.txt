@@ -1,0 +1,21 @@
+1. features.resy
+2. recursion_depth.resy
+3. rsconvert_test.resy
+4. rssignal_adc_test.resy
+5. rssignal_input_only_error.resy
+6. rssignal_loopback_test.resy
+7. rssignal_test.resy
+8. rssystem.resy
+9. test.resy
+
+1:correct
+2:correct
+3:correct
+4:ResirisError: line 36, column 1: line 37, column 2: division by zero
+5:Galena: programs/rssignal_input_only_error.resy
+ResirisError: line 16, column 1: RSSignal.set_signal_mode: GPIO34 is input-only
+6:RSSignal loopback failures: 2
+ResirisError: line 36, column 1: line 37, column 2: division by zero
+7:correct
+8:correct
+9:correct
