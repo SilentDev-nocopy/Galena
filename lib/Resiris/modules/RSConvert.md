@@ -25,7 +25,7 @@ argument. Entries marked number accept `int`, `float`, or `bool`.
 | `integer_to_hex(number)` | Non-negative integer | Lowercase hexadecimal without `0x` |
 | `hex_to_integer(text)` | Hex digits | Integer; accepts `0x`/`0X` and either case |
 | `url_encode(text)` | ASCII text | Percent escapes; leaves `A-Z a-z 0-9 - . _ ~` unchanged |
-| `url_decode(text)` | Percent-escaped text | ASCII text; spaces are encoded as `%20`, not `+` |
+| `url_decode(text)` | xxxxxxxxxx <include> RSBase​c FPS float = 10.0v timer ModuleObject = RSBase.await()​START():    timer.set_timer(0.5)    timer.on_timeout("timeout")​PROCESS(FPS):    print_cmd(timer.process())​fn timeout():    print_cmd("timer expired")resiris | ASCII text; spaces are encoded as `%20`, not `+` |
 | `integer_to_binary(number)` | Non-negative integer | Binary digits without `0b` |
 | `binary_to_integer(text)` | `0`/`1` digits | Integer |
 | `integer_to_octal(number)` | Non-negative integer | Octal digits without `0o` |

@@ -38,7 +38,7 @@ Each constant's value is its GPIO number.
 | ADC1 / Wi-Fi safe | `ADC1_WIFI_SAFE_GPIO32`, `ADC1_WIFI_SAFE_GPIO33`, `ADC1_WIFI_SAFE_GPIO34`, `ADC1_WIFI_SAFE_GPIO35`, `ADC1_WIFI_SAFE_GPIO36`, `ADC1_WIFI_SAFE_GPIO39` |
 
 Observe the ESP32 board's electrical limits when wiring external devices;
-GPIOs are not 5 V tolerant.
+**NOT ALL GPIOs ARE 5 V TOLERANT!**
 
 ## Example
 

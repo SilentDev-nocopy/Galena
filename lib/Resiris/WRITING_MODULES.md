@@ -151,8 +151,8 @@ before your code runs:
 <ModuleObject> is not a usable modules argument! Error code:"UnknownModuleArgument"
 ```
 
-One consequence worth remembering: you cannot pass an object handle to a
-different module function as an argument. Put what you need inside the object's
+One consequence worth remembering: **you cannot pass an object handle to a**
+**different module function as an argument.** Put what you need inside the object's
 own state and reach it with a method call.
 
 **Result types are checked for you.** You may return `bool`, `int`, `float`,
