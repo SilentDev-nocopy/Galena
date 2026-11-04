@@ -19,14 +19,14 @@ void serial_sink(const std::string& text) {
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    delay(250);
 
     resiris::set_text_sink(serial_sink);
 
     // The Resiris program to run, chosen at build time from programs/*.resy. To
     // run a different one, name its identifier here. scripts/generate_programs.py
     // rewrites this line, and the host's --embedded mode reads it back.
-    const char* source = resiris_programs::rssystem_resy;
+    const char* source = resiris_programs::blinking_resy;
 
     galena::run_program(source, galena::RunOptions{
                                    .label =
