@@ -1,0 +1,7 @@
+Galena - Future Plans
+====================
+
+- An sd card slot so we can have more programs on the esp.
+- An app launcher.
+- Program upload functions
+- button multi functions 
