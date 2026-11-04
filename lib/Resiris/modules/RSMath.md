@@ -36,6 +36,16 @@ module argument error.
 | `asin(x)` | number | Inverse sine as `float`; result is in radians |
 | `acos(x)` | number | Inverse cosine as `float`; result is in radians |
 | `atan(x)` | number | Inverse tangent as `float`; result is in radians |
+| `atan2(y, x)` | two numbers | Angle in radians in the correct quadrant |
+| `exp(x)` | number | e raised to `x`, as `float` |
+| `log2(x)` | number | Base-2 logarithm as `float`; `x` must be positive |
+| `radians(degrees)` | number | Converts degrees to radians, as `float` |
+| `degrees(radians)` | number | Converts radians to degrees, as `float` |
+| `sign(x)` | number | `-1`, `0`, or `1`; NaN raises a math-domain error |
+| `square(x)` | number | `x * x` as `float` |
+| `lerp(start, end, amount)` | three numbers | Linear interpolation; `amount` is not clamped |
+| `map_range(value, input_min, input_max, output_min, output_max)` | five numbers | Linearly maps one range to another; equal input bounds raise a math-domain error |
+| `smoothstep(edge0, edge1, x)` | three numbers | Clamped cubic smooth transition from 0 to 1; requires `edge0 < edge1` |
 | `hypot(x, y)` | two numbers | Hypotenuse `sqrt(x*x + y*y)`, as `float` |
 | `pythagoras(x, y)` | two numbers | Alias for `hypot(x, y)` |
 | `factorial(n)` | integer | `n!` as `int`; negative values raise a math-domain error |
@@ -62,9 +72,16 @@ common multiples; keep inputs within the range whose result fits in `int`.
 <include> RSMath
 
 print_cmd(RSMath.sqrt(16.0))       ## 4.0
+print_cmd(RSMath.square(5))        ## 25.0
 print_cmd(RSMath.pow(2.0, 10.0))   ## 1024.0
 print_cmd(RSMath.round(2.5))       ## 2
-print_cmd(RSMath.ncr(5, 2))        ## 10
+print_cmd(RSMath.atan2(1.0, 1.0))  ## 0.785398...
+print_cmd(RSMath.log2(8.0))        ## 3.0
+print_cmd(RSMath.degrees(RSMath[PI])) ## 180.0
+print_cmd(RSMath.lerp(10.0, 20.0, 0.25)) ## 12.5
+print_cmd(RSMath.map_range(512.0, 0.0, 1023.0, 0.0, 100.0))
+print_cmd(RSMath.smoothstep(0.0, 1.0, 0.5)) ## 0.5
+print_cmd(RSMath.ncr(5, 2))         ## 10
 print_cmd(RSMath.mod(-7, 3))       ## 2
 print_cmd(RSMath[PI])
 ```

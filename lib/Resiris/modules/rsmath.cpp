@@ -163,6 +163,87 @@ Value RsMathModule::call_function(const std::string& fn, const std::vector<Value
         return Value::make_float(std::atan(as_number(require(args, 0, 0))));
     }
 
+    if (fn == "atan2") {
+        require_count(args, 2);
+        return Value::make_float(std::atan2(as_number(require(args, 0, 0)),
+                                            as_number(require(args, 1, 0))));
+    }
+
+    if (fn == "exp") {
+        require_count(args, 1);
+        return Value::make_float(std::exp(as_number(require(args, 0, 0))));
+    }
+
+    if (fn == "log2") {
+        require_count(args, 1);
+        double v = as_number(require(args, 0, 0));
+        if (v <= 0.0) {
+            throw ResirisError("math domain error");
+        }
+        return Value::make_float(std::log2(v));
+    }
+
+    if (fn == "radians") {
+        require_count(args, 1);
+        return Value::make_float(as_number(require(args, 0, 0)) *
+                                 (3.14159265358979323846 / 180.0));
+    }
+
+    if (fn == "degrees") {
+        require_count(args, 1);
+        return Value::make_float(as_number(require(args, 0, 0)) *
+                                 (180.0 / 3.14159265358979323846));
+    }
+
+    if (fn == "sign") {
+        require_count(args, 1);
+        double v = as_number(require(args, 0, 0));
+        if (std::isnan(v)) {
+            throw ResirisError("math domain error");
+        }
+        return Value::make_int(v < 0.0 ? -1 : (v > 0.0 ? 1 : 0));
+    }
+
+    if (fn == "square") {
+        require_count(args, 1);
+        double v = as_number(require(args, 0, 0));
+        return Value::make_float(v * v);
+    }
+
+    if (fn == "lerp") {
+        require_count(args, 3);
+        double start = as_number(require(args, 0, 0));
+        double end = as_number(require(args, 1, 0));
+        double amount = as_number(require(args, 2, 0));
+        return Value::make_float(start + (end - start) * amount);
+    }
+
+    if (fn == "map_range") {
+        require_count(args, 5);
+        double value = as_number(require(args, 0, 0));
+        double input_min = as_number(require(args, 1, 0));
+        double input_max = as_number(require(args, 2, 0));
+        double output_min = as_number(require(args, 3, 0));
+        double output_max = as_number(require(args, 4, 0));
+        if (input_min == input_max) {
+            throw ResirisError("math domain error");
+        }
+        double fraction = (value - input_min) / (input_max - input_min);
+        return Value::make_float(output_min + fraction * (output_max - output_min));
+    }
+
+    if (fn == "smoothstep") {
+        require_count(args, 3);
+        double edge0 = as_number(require(args, 0, 0));
+        double edge1 = as_number(require(args, 1, 0));
+        double value = as_number(require(args, 2, 0));
+        if (!(edge0 < edge1)) {
+            throw ResirisError("math domain error");
+        }
+        double t = std::clamp((value - edge0) / (edge1 - edge0), 0.0, 1.0);
+        return Value::make_float(t * t * (3.0 - 2.0 * t));
+    }
+
     if (fn == "hypot" || fn == "pythagoras") {
         require_count(args, 2);
         return Value::make_float(

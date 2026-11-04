@@ -14,9 +14,11 @@ public:
         return {
             "abs",       "sqrt",    "cbrt",   "pow",    "floor", "ceil",
             "round",     "ln",      "log10",  "sin",    "cos",   "tan",
-            "asin",      "acos",    "atan",   "hypot",  "factorial", "ncr",
-            "npr",       "gcd",     "lcm",    "mod",    "min",   "max",
-            "clamp",     "is_nan",  "is_inf", "is_finite", "pythagoras",
+            "asin",      "acos",    "atan",   "atan2",  "exp",   "log2",
+            "radians",   "degrees", "sign",   "square", "hypot", "factorial",
+            "lerp",      "map_range", "smoothstep", "ncr", "npr", "gcd",
+            "lcm",       "mod",     "min",    "max",    "clamp", "is_nan",
+            "is_inf",    "is_finite", "pythagoras",
         };
     }
 
