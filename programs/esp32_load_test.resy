@@ -1,31 +1,56 @@
-<include> RSBase, RSSystem, RSMath
+<include> RSBase, RSSystem, RSMath, RSSignal
 
-c FPS float = 1.0
-v timer ModuleObject = RSBase.await()
-v load_score float = 0.0
+c FPS float = 30.0
+v report_timer ModuleObject = RSBase.await()
+v heartbeat_timer ModuleObject = RSBase.await()
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v signal_on bool = false
+v workload_level int = 1
+v work_result float = 0.0
 
-fn calculate_load(x):
-	return RSMath.sin(x) + RSMath.cos(x) + RSMath.sqrt(x)
+fn do_work(x):
+	return RSMath.sin(x)
+
+fn toggle_signal():
+	if signal_on:
+		RSSignal.stop_signal(pin)
+		signal_on = false
+	else:
+		RSSignal.send_signal(pin)
+		signal_on = true
+	heartbeat_timer.reset_timer()
 
 fn report_status():
-	print_cmd("--- ESP32 interpreter load test ---")
-	print_cmd("CPU MHz:       " + str(RSSystem.cpu_speed()))
-	print_cmd("Free heap:     " + str(RSSystem.memory_free()) + " bytes")
-	print_cmd("Minimum heap:  " + str(RSSystem.memory_min_free()) + " bytes")
-	print_cmd("Uptime:        " + str(RSSystem.uptime()) + " seconds")
-	print_cmd("Load result:   " + str(load_score))
-	timer.reset_timer()
+	v measured_load float = RSSystem.cpu_load()
+	if measured_load < 80.0:
+		if workload_level < 3:
+			workload_level += 1
+	elif measured_load > 90.0:
+		if workload_level > 1:
+			workload_level -= 1
+	
+	print_cmd("")
+	print_cmd("--- ESP32 load manager ---")
+	print_cmd("Interpreter load: " + str(measured_load) + "%")
+	print_cmd("Work units/frame: " + str(workload_level) + " (max 3)")
+	print_cmd("Free memory: " + str(RSSystem.memory_free()) + " bytes")
+	print_cmd("Minimum free memory: " + str(RSSystem.memory_min_free()) + " bytes")
+	print_cmd("Uptime: " + str(RSSystem.uptime()) + " seconds")
+	report_timer.reset_timer()
 
 START():
-	timer.set_timer(0.5)
-	timer.on_timeout("report_status")
-	print_cmd("CPU stress running; reset the ESP32 to stop.")
+	RSSignal.set_signal_mode(pin, true)
+	heartbeat_timer.set_timer(1.0)
+	heartbeat_timer.on_timeout("toggle_signal")
+	report_timer.set_timer(5.0)
+	report_timer.on_timeout("report_status")
+	print_cmd("Adaptive load test started; reset the ESP32 to stop.")
 
 PROCESS(FPS):
-	load_score = calculate_load(1.1)
-	load_score = calculate_load(1.2)
-	load_score = calculate_load(1.3)
-	load_score = calculate_load(1.6)
-##	load_score = calculate_load(1.7)
-##	load_score = calculate_load(1.8)
-	timer.process()
+	work_result = do_work(1.1)
+	if workload_level >= 2:
+		work_result = do_work(1.2)
+	if workload_level >= 3:
+		work_result = do_work(1.3)
+	heartbeat_timer.process()
+	report_timer.process()

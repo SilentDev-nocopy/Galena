@@ -27,12 +27,9 @@ namespace {
 // and a module cannot take them as constructor arguments because
 // scripts/generate_modules.py can only default-construct what it finds.
 //
-// cpu_seconds() covers tokenizing, parsing, the top level and every PROCESS
-// frame, which is all the time this process spends working. What it does not
-// cover is time spent asleep between frames. With the entry points as they are
-// today nothing sleeps, so the share sits near 100%, and that is the truth: the
-// program never yields. It becomes a real duty cycle the moment an entry point
-// paces frames the way Interpreter::run_process_forever does.
+// cpu_seconds() covers startup and every PROCESS frame. Time spent asleep
+// between frames is excluded, so cpu_load() reports the interpreter's share of
+// elapsed wall time.
 double& cpu_seconds() {
     static double seconds = 0.0;
     return seconds;
@@ -113,6 +110,7 @@ int run_program(const char* source, const RunOptions& options) {
         resiris::set_program_clock({
             [] { return resiris::monotonic_seconds() - program_start(); },
             &interpreter_cpu_load,
+            [](double seconds) { cpu_seconds() += seconds; },
         });
 
         // Tokenizing

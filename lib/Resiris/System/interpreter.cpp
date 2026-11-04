@@ -252,8 +252,10 @@ void Interpreter::run_process_forever() {
     double next_frame = monotonic_seconds();
 
     while (stop_flag_ == nullptr || *stop_flag_ == 0) {
+        const double frame_start = monotonic_seconds();
         frame_time_ += frame_period;
         execute_lifecycle(process_lifecycle, static_cast<float>(fps));
+        account_program_cpu_time(monotonic_seconds() - frame_start);
         next_frame += frame_period;
         const double sleep_time = next_frame - monotonic_seconds();
         if (sleep_time > 0.0) {

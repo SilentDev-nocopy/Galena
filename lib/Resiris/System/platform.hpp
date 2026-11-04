@@ -33,6 +33,8 @@ struct ProgramClock {
     std::function<double()> seconds;
     // Percent of wall-clock time spent executing, 0..100.
     std::function<float()> cpu_load;
+    // Adds time spent executing a PROCESS frame to the runtime's CPU counter.
+    std::function<void(double)> account_cpu_time;
 };
 
 // Installs the program clock. The runtime calls this once, after creating the
@@ -50,5 +52,7 @@ bool has_program_clock();
 double program_seconds();
 
 float program_cpu_load();
+
+void account_program_cpu_time(double seconds);
 
 } // namespace resiris

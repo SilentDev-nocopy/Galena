@@ -66,4 +66,10 @@ float program_cpu_load() {
     return program_clock.cpu_load();
 }
 
+void account_program_cpu_time(double seconds) {
+    if (program_clock.account_cpu_time) {
+        program_clock.account_cpu_time(seconds);
+    }
+}
+
 } // namespace resiris
