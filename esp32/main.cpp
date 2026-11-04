@@ -19,14 +19,14 @@ void serial_sink(const std::string& text) {
 
 void setup() {
     Serial.begin(115200);
-    //delay(250); // Wait for the serial port to be ready. This is a hack, but it works.
+    delay(250); // Wait for the serial port to be ready. This is a hack, but it works.
 
     resiris::set_text_sink(serial_sink);
 
     // The Resiris program to run, chosen at build time from programs/*.resy. To
     // run a different one, name its identifier here. scripts/generate_programs.py
     // rewrites this line, and the host's --embedded mode reads it back.
-    const char* source = resiris_programs::blink_and_systeminfo_resy;
+    const char* source = resiris_programs::esp32_load_test_resy;
 
     galena::run_program(source, galena::RunOptions{
                                    .label =

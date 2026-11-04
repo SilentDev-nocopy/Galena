@@ -70,6 +70,41 @@ PROCESS(FPS):
 	timer.process()
 )RESY";
 
+// programs/esp32_load_test.resy
+constexpr const char* esp32_load_test_resy =
+R"RESY(<include> RSBase, RSSystem, RSMath
+
+c FPS float = 1.0
+v timer ModuleObject = RSBase.await()
+v load_score float = 0.0
+
+fn calculate_load(x):
+	return RSMath.sin(x) + RSMath.cos(x) + RSMath.sqrt(x)
+
+fn report_status():
+	print_cmd("--- ESP32 interpreter load test ---")
+	print_cmd("CPU MHz:       " + str(RSSystem.cpu_speed()))
+	print_cmd("Free heap:     " + str(RSSystem.memory_free()) + " bytes")
+	print_cmd("Minimum heap:  " + str(RSSystem.memory_min_free()) + " bytes")
+	print_cmd("Uptime:        " + str(RSSystem.uptime()) + " seconds")
+	print_cmd("Load result:   " + str(load_score))
+	timer.reset_timer()
+
+START():
+	timer.set_timer(0.5)
+	timer.on_timeout("report_status")
+	print_cmd("CPU stress running; reset the ESP32 to stop.")
+
+PROCESS(FPS):
+	load_score = calculate_load(1.1)
+	load_score = calculate_load(1.2)
+	load_score = calculate_load(1.3)
+	load_score = calculate_load(1.6)
+##	load_score = calculate_load(1.7)
+##	load_score = calculate_load(1.8)
+	timer.process()
+)RESY";
+
 // programs/features.resy
 constexpr const char* features_resy =
 R"RESY(<include> RSMath, RSBase
@@ -586,6 +621,7 @@ struct ResyProgram {
 constexpr ResyProgram kResyPrograms[] = {
     {"programs/blink_and_systeminfo.resy", "blink_and_systeminfo", "blink_and_systeminfo_resy", blink_and_systeminfo_resy},
     {"programs/blinking.resy", "blinking", "blinking_resy", blinking_resy},
+    {"programs/esp32_load_test.resy", "esp32_load_test", "esp32_load_test_resy", esp32_load_test_resy},
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
     {"programs/rsconvert_test.resy", "rsconvert_test", "rsconvert_test_resy", rsconvert_test_resy},
@@ -597,7 +633,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 11;
+constexpr int kResyProgramCount = 12;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {
