@@ -1,0 +1,31 @@
+<include> RSSignal, RSBase, RSSystem
+
+c FPS float = 10.0
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v signal_on bool = true
+v timer ModuleObject = RSBase.await()
+
+v cooldown int = 1
+
+fn toggle_signal():
+	if signal_on:
+		RSSignal.stop_signal(pin)
+		signal_on = false
+	else:
+		RSSignal.send_signal(pin)
+		signal_on = true
+	timer.reset_timer()
+	print_cmd("cores:   " + str(RSSystem.cpu_cores()))
+	print_cmd("load:    " + str(RSSystem.cpu_load()))
+	print_cmd("modules: " + RSSystem.modules())
+	print_cmd("uptime:  " + str(RSSystem.uptime()))
+	
+
+START():
+	RSSignal.set_signal_mode(pin, true)
+	RSSignal.send_signal(pin)
+	timer.set_timer(cooldown)
+	timer.on_timeout("toggle_signal")
+
+PROCESS(FPS):
+	timer.process()

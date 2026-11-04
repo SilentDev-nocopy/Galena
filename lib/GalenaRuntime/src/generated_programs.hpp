@@ -5,6 +5,41 @@
 
 namespace resiris_programs {
 
+// programs/blink_and_systeminfo.resy
+constexpr const char* blink_and_systeminfo_resy =
+R"RESY(<include> RSSignal, RSBase, RSSystem
+
+c FPS float = 10.0
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v signal_on bool = true
+v timer ModuleObject = RSBase.await()
+
+v cooldown int = 1
+
+fn toggle_signal():
+	if signal_on:
+		RSSignal.stop_signal(pin)
+		signal_on = false
+	else:
+		RSSignal.send_signal(pin)
+		signal_on = true
+	timer.reset_timer()
+	print_cmd("cores:   " + str(RSSystem.cpu_cores()))
+	print_cmd("load:    " + str(RSSystem.cpu_load()))
+	print_cmd("modules: " + RSSystem.modules())
+	print_cmd("uptime:  " + str(RSSystem.uptime()))
+	
+
+START():
+	RSSignal.set_signal_mode(pin, true)
+	RSSignal.send_signal(pin)
+	timer.set_timer(cooldown)
+	timer.on_timeout("toggle_signal")
+
+PROCESS(FPS):
+	timer.process()
+)RESY";
+
 // programs/blinking.resy
 constexpr const char* blinking_resy =
 R"RESY(<include> RSSignal, RSBase
@@ -549,6 +584,7 @@ struct ResyProgram {
 };
 
 constexpr ResyProgram kResyPrograms[] = {
+    {"programs/blink_and_systeminfo.resy", "blink_and_systeminfo", "blink_and_systeminfo_resy", blink_and_systeminfo_resy},
     {"programs/blinking.resy", "blinking", "blinking_resy", blinking_resy},
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
@@ -561,7 +597,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 10;
+constexpr int kResyProgramCount = 11;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {
