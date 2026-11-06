@@ -26,7 +26,7 @@ void setup() {
     // The Resiris program to run, chosen at build time from programs/*.resy. To
     // run a different one, name its identifier here. scripts/generate_programs.py
     // rewrites this line, and the host's --embedded mode reads it back.
-    const char* source = resiris_programs::blinking_resy;
+    const char* source = resiris_programs::blink_and_systeminfo_resy;
 
     galena::run_program(source, galena::RunOptions{
                                    .label =

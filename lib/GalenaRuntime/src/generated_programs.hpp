@@ -10,7 +10,7 @@ constexpr const char* blink_and_systeminfo_resy =
 R"RESY(<include> RSSignal, RSBase, RSSystem
 
 c FPS float = 10.0
-v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO25]
 v signal_on bool = true
 v timer ModuleObject = RSBase.await()
 
@@ -45,7 +45,7 @@ constexpr const char* blinking_resy =
 R"RESY(<include> RSSignal, RSBase
 
 c FPS float = 10.0
-v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO25]
 v signal_on bool = true
 v timer ModuleObject = RSBase.await()
 

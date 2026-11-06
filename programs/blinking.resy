@@ -1,7 +1,7 @@
 <include> RSSignal, RSBase
 
 c FPS float = 10.0
-v pin int = RSSignal[GENERAL_DIGITAL_GPIO23]
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO25]
 v signal_on bool = true
 v timer ModuleObject = RSBase.await()
 

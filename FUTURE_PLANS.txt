@@ -3,7 +3,11 @@ Galena - Future Plans
 
 Modules: RSStorage, RSDisplay
 
-- An sd card slot so we can have more programs on the esp.
+- An sd card slot so we can have more programs on the device.
 - An app launcher.
 - Program upload functions
 - button multi functions 
+
+MODES: 
+    1. Calculator Mode
+    2. App Launcher Mode
