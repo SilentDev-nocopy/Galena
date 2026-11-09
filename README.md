@@ -178,7 +178,7 @@ The intended stack, from user program down to hardware:
 │  ┌───────────────────────────────┐  │
 │  │       Resiris Programs        │  │
 │  ├───────────────────────────────┤  │
-│  │         Galena Runtime         │  │
+│  │         Galena Runtime        │  │
 │  ├───────────────────────────────┤  │
 │  │         Galena System         │  │
 │  ├───────────────────────────────┤  │
