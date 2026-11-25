@@ -562,7 +562,7 @@ R"RESY(## Basic RSNetwork web page for the ESP32.
 ## read files from the device. On a PC this program cannot run because it calls
 ## Wi-Fi, so `make test` skips it.
 
-<include> RSNetwork
+<include> RSNetwork, RSSystem
 
 c FPS float = 10.0
 c port_number int = 8080
@@ -580,8 +580,44 @@ c html_page string = "<!DOCTYPE html>\n<html lang='en'>\n<head>\n  <meta charset
 ## into the target element.
 c rsclient_js string = "(() => {\n  function readValue(el) {\n    const from = el.getAttribute('rs-value-from');\n    if (from) {\n      const source = document.querySelector(from);\n      return source ? source.value : '';\n    }\n    return el.getAttribute('rs-value') || '';\n  }\n\n  async function callElement(el) {\n    const name = el.getAttribute('rs-call');\n    const targetSelector = el.getAttribute('rs-target');\n    const target = targetSelector ? document.querySelector(targetSelector) : null;\n    if (!name) return;\n    const value = readValue(el);\n    const url = '/call/' + encodeURIComponent(name) + '?value=' + encodeURIComponent(value);\n    try {\n      const response = await fetch(url);\n      const text = await response.text();\n      if (target) target.textContent = text;\n    } catch (error) {\n      if (target) target.textContent = 'Error: ' + error.message;\n    }\n  }\n\n  document.querySelectorAll('[rs-call]').forEach(el => {\n    el.addEventListener('click', () => callElement(el));\n  });\n})();"
 
+## ESP32 resource diagnostics. The web program has crashed on the device once,
+## so the serial monitor gets a full hardware snapshot at startup and a short
+## heap/load line every second. Falling heap_free or a low heap_min is the first
+## thing to check before an out-of-memory or allocator crash.
+##
+## Strings are built with += instead of one long `+` chain. The interpreter
+## recurses once per `+`, and the loopTask stack on the ESP32 is small enough
+## that a chain this long trips the stack canary.
+c resource_interval float = 1.0
+v last_resource_print float = 0.0
+
+fn print_resources():
+	v up float = RSSystem.uptime()
+	v heap_free int = RSSystem.memory_free()
+	v heap_min int = RSSystem.memory_min_free()
+	v heap_total int = RSSystem.memory_total()
+	v cpu_percent float = RSSystem.cpu_load()
+	v cpu_mhz int = RSSystem.cpu_speed()
+	v line string = "resources t="
+	line += str(up)
+	line += "s heap_free="
+	line += str(heap_free)
+	line += " heap_min="
+	line += str(heap_min)
+	line += " heap_total="
+	line += str(heap_total)
+	line += " cpu="
+	line += str(cpu_percent)
+	line += "% @ "
+	line += str(cpu_mhz)
+	line += "MHz"
+	print_cmd(line)
+
 START():
 	print_cmd("RSNetwork web demo")
+	print_cmd("=== hardware report ===")
+	print_cmd(RSSystem.report())
+	print_resources()
 	wifi.set_route_mode(RSNetwork[ROUTEMODE_SR])
 	wifi.set_route_info(ap_ssid, ap_password)
 	print_cmd("AP: " + wifi.get_own_route_info())
@@ -591,13 +627,24 @@ START():
 	page.set_page_content(html_page)
 	page.set_client_script(rsclient_js)
 	page.start_server()
-	print_cmd("Open http://" + wifi.get_ip(ap_ssid) + ":" + str(port_number))
+	v url string = "Open http://"
+	url += wifi.get_ip(ap_ssid)
+	url += ":"
+	url += str(port_number)
+	print_cmd(url)
 
 PROCESS(FPS):
 	page.process()
 	if page.get_request_state():
 		v value int = page.request_int_data()
-		page.respond_string_data(str(value) + " + 5 = " + str(value + 5))
+		v result int = value + 5
+		v response string = str(value)
+		response += " + 5 = "
+		response += str(result)
+		page.respond_string_data(response)
+	if RSSystem.uptime() - last_resource_print >= resource_interval:
+		last_resource_print = RSSystem.uptime()
+		print_resources()
 )RESY";
 
 // programs/rssignal_adc_test.resy
