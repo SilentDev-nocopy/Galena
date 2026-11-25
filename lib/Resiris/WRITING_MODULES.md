@@ -46,6 +46,7 @@ features, where a new module goes.
 | `modules/rssystem.hpp` / `modules/rssystem.cpp` | `RsSystemModule`, a module that reads the machine instead of the script |
 | `modules/rsconvert.hpp` / `modules/rsconvert.cpp` | `RsConvertModule`, text and numeric conversions |
 | `modules/rssignal.hpp` / `modules/rssignal.cpp` | `RsSignalModule`, ESP32 GPIO and ADC access |
+| `modules/rsnetwork.hpp` / `modules/rsnetwork.cpp` | `RsNetworkModule`, Wi-Fi and the HTML server |
 
 Each header sits beside the `.cpp` that implements it, and both are reached from
 the `lib/Resiris/` folder: `#include "System/module.hpp"`,
@@ -206,9 +207,10 @@ enum class ModuleTarget {
 
 `RSMath`, `RSBase` and `RSConvert` are `EspAndPc` because they are pure
 computation. `RSSystem` is portable too, though it refuses the eleven functions
-that read the ESP32. `RSSignal` is `EspOnly`, because its whole job is the GPIO
-peripheral; on a PC the registry refuses it at `<include>`. The answer is one
-line:
+that read the ESP32. `RSNetwork` is `EspAndPc`: its HTML server works on a PC,
+but its Wi-Fi calls raise errors there. `RSSignal` is `EspOnly`, because its
+whole job is the GPIO peripheral; on a PC the registry refuses it at
+`<include>`. The answer is one line:
 
 ```cpp
 ModuleTarget target() const override { return ModuleTarget::EspAndPc; }
@@ -266,6 +268,14 @@ Guarding each function separately with `#if` works too and reads more plainly,
 but it scatters the host/device decision through the dispatch. Either way the
 rule is the same: the file must build with plain `g++`, because `make` compiles
 every `lib/Resiris/**/*.cpp` on the host regardless of what `target()` says.
+
+`RSNetwork` is the third shape: part of the module is portable and part is not.
+Its HTML server is real on both targets, so the module is `EspAndPc` and only
+the Wi-Fi calls refuse on a PC. The socket itself sits behind a small
+`ServerTransport` interface declared in the header; the `.cpp` chooses a POSIX
+implementation or Arduino's `WiFiServer`/`WiFiClient` under `#if defined(ARDUINO)`.
+That keeps one set of HTTP rules for both builds, and keeps Arduino types out
+of the host compile.
 
 ## A complete example
 

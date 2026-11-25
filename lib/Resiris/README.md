@@ -188,7 +188,7 @@ can tell a syntax error from a type error or a module error.
 | Output | `print_cmd(...)` |
 | Operators | `+ - * / %`, `== != < <= > >=`, `+= -= *= /=`, member `.`, constant `[...]` |
 | Built-ins | `str(x)`, `x.type()`, `x.type(T)`, `x.string()` |
-| Modules | `RSMath`, `RSBase`, `RSSystem`, `RSConvert`, `RSSignal` |
+| Modules | `RSMath`, `RSBase`, `RSSystem`, `RSConvert`, `RSSignal`, `RSNetwork` |
 
 Absent on purpose or for now: no `!` operator, no power operator, no bitwise
 operators, no containers, no `null`, no comment syntax other than `##`.

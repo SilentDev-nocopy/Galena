@@ -36,11 +36,15 @@ NATIVE_DEPS := $(RUNTIME_DIR)/generated_programs.hpp $(RUNTIME_DIR)/generated_mo
 # script by hand in that case, or build the firmware, which always regenerates.
 MODULE_HEADERS := $(wildcard $(MODULES_DIR)/*.hpp)
 
-# Programs that include one of these modules need the ESP32 and are skipped by
-# `make test` on the host. Keep the list in sync with the EspOnly modules.
-# RSNetwork is listed until its ESP32 implementation is ported into
-# lib/Resiris/modules/; its self-test covers the Wi-Fi API.
-ESP_ONLY_MODULES := RSSignal RSNetwork
+# Programs that include an EspOnly module are skipped by `make test` on the
+# host. Keep the list in sync with the modules that declare ModuleTarget::EspOnly.
+ESP_ONLY_MODULES := RSSignal
+
+# A portable module can still have device-only programs. RSNetwork's Wi-Fi test
+# and the ESP32 web demo are two: the module loads on a PC, but Wi-Fi has no host
+# implementation. Its portable server is covered by
+# programs/rsnetwork_server_test.resy.
+HOST_SKIP_PROGRAMS := programs/rsnetwork_test.resy programs/rsnetwork_webpage.resy
 
 .PHONY: all run embedded test generate clean
 
@@ -76,6 +80,9 @@ test: $(BINARY)
 		skip=0; \
 		for module in $(ESP_ONLY_MODULES); do \
 			if grep -q "<include>.*$$module" "$$program"; then skip=1; fi; \
+		done; \
+		for device_test in $(HOST_SKIP_PROGRAMS); do \
+			if [ "$$program" = "$$device_test" ]; then skip=1; fi; \
 		done; \
 		if [ $$skip -eq 1 ]; then \
 			echo "  skip  $$program (ESP only)"; \

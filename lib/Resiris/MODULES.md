@@ -1,6 +1,6 @@
 # Resiris modules
 
-This is the index for the five modules shipped with Resiris. Each module has
+This is the index for the six modules shipped with Resiris. Each module has
 its own reference beside the native implementation:
 
 | Module | Purpose | Reference |
@@ -10,6 +10,7 @@ its own reference beside the native implementation:
 | `RSSystem` | Runtime and ESP32 system information | [RSSystem.md](modules/RSSystem.md) |
 | `RSConvert` | Text, number, encoding and binary conversions | [RSConvert.md](modules/RSConvert.md) |
 | `RSSignal` | ESP32 GPIO and ADC access | [RSSignal.md](modules/RSSignal.md) |
+| `RSNetwork` | ESP32 Wi-Fi and a portable HTML server | [RSNetwork.md](modules/RSNetwork.md) |
 
 Use the language reference for syntax and error behavior:
 [HOW_TO_USE.md](HOW_TO_USE.md). To implement a native module in C++, see

@@ -452,14 +452,55 @@ if failures > 0:
 	v abort int = 1 / 0
 )RESY";
 
+// programs/rsnetwork_server_test.resy
+constexpr const char* rsnetwork_server_test_resy =
+R"RESY(## RSNetwork HTML server self-test.
+##
+## This part of RSNetwork is portable: it needs no Wi-Fi and no wiring, so this
+## file runs on a PC (`make test`) and on the device. Every check prints PASS or
+## FAIL on its own line and a failing check stops the program with an error.
+
+<include> RSNetwork
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+## The handler, its configuration and the listen socket work on both targets.
+## On a PC the socket binds to 127.0.0.1; on the device it uses the Wi-Fi IP.
+## start_server() brings up station mode on the device if Wi-Fi is still off,
+## because lwIP needs a running Wi-Fi mode before a socket can be opened.
+v page ModuleObject = RSNetwork.html_server_handler()
+check("server handle type", page.type() == "ModuleObject")
+check("create server", page.create_server(18080) == true)
+check("page content", page.set_page_content("<h1>RSNetwork</h1>") == true)
+check("client script", page.set_client_script("// rsclient.js") == true)
+check("start server", page.start_server() == true)
+
+## With no browser connected there is nothing to read, so the API must say so
+## instead of handing back an old value.
+check("no request yet", page.get_request_state() == false)
+check("process with no client", page.process() == false)
+
+print_cmd("RSNetwork server failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0
+)RESY";
+
 // programs/rsnetwork_test.resy
 constexpr const char* rsnetwork_test_resy =
 R"RESY(## RSNetwork self-test for the ESP32.
 ##
-## This program is EspOnly for now: the RSNetwork module has not been ported into
-## lib/Resiris/modules/ yet, so the host `make test` skips it. Once the module is
-## present, every check prints PASS or FAIL on its own line and a failing check
-## stops the program with an error.
+## The module itself is portable, but these checks call Wi-Fi, which exists only
+## on the device; the host `make test` therefore skips this file. The portable
+## server is covered by programs/rsnetwork_server_test.resy. Every check prints
+## PASS or FAIL on its own line and a failing check stops the program with an
+## error.
 ##
 ## It covers the Wi-Fi API (constants, route mode, route info, speed handler) and
 ## the portable server-handler setup. No external wiring or browser is needed.
@@ -509,6 +550,54 @@ check("set client script", page.set_client_script("// rsclient.js") == true)
 print_cmd("RSNetwork failures: " + str(failures))
 if failures > 0:
 	v abort int = 1 / 0
+)RESY";
+
+// programs/rsnetwork_webpage.resy
+constexpr const char* rsnetwork_webpage_resy =
+R"RESY(## Basic RSNetwork web page for the ESP32.
+##
+## The device creates its own Wi-Fi network (AP mode), serves a small HTML page
+## at port 8080, and adds 5 to the number sent by the page. The HTML and the
+## /rsclient.js script are passed to the module as strings; the server does not
+## read files from the device. On a PC this program cannot run because it calls
+## Wi-Fi, so `make test` skips it.
+
+<include> RSNetwork
+
+c FPS float = 10.0
+c port_number int = 8080
+c ap_ssid string = "galena-demo"
+c ap_password string = "galena123"
+
+v wifi ModuleObject = RSNetwork.wifi()
+v page ModuleObject = RSNetwork.html_server_handler()
+
+## Single quotes inside the HTML and JS keep the Resiris string literals simple.
+c html_page string = "<!DOCTYPE html>\n<html lang='en'>\n<head>\n  <meta charset='utf-8'>\n  <meta name='viewport' content='width=device-width, initial-scale=1'>\n  <title>RSNetwork demo</title>\n  <style>\n    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; color: #222; }\n    .card { max-width: 30rem; padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px #0002; }\n    input { font-size: 1rem; padding: 0.5rem; width: 8rem; }\n    button { font-size: 1rem; padding: 0.5rem 1rem; cursor: pointer; }\n    output { display: block; margin-top: 1rem; font-weight: bold; }\n  </style>\n</head>\n<body>\n  <div class='card'>\n    <h1>RSNetwork demo</h1>\n    <p>The ESP32 adds 5 to the number and sends the result back.</p>\n    <input id='num' type='number' value='5'>\n    <button rs-call='add' rs-value-from='#num' rs-target='#out'>Add 5</button>\n    <output id='out'>No request yet</output>\n  </div>\n  <script src='/rsclient.js'></script>\n</body>\n</html>"
+
+## The script served at /rsclient.js. It turns rs-call/rs-value-from/rs-target
+## attributes into a GET to /call/<name>?value=<text> and writes the response
+## into the target element.
+c rsclient_js string = "(() => {\n  function readValue(el) {\n    const from = el.getAttribute('rs-value-from');\n    if (from) {\n      const source = document.querySelector(from);\n      return source ? source.value : '';\n    }\n    return el.getAttribute('rs-value') || '';\n  }\n\n  async function callElement(el) {\n    const name = el.getAttribute('rs-call');\n    const targetSelector = el.getAttribute('rs-target');\n    const target = targetSelector ? document.querySelector(targetSelector) : null;\n    if (!name) return;\n    const value = readValue(el);\n    const url = '/call/' + encodeURIComponent(name) + '?value=' + encodeURIComponent(value);\n    try {\n      const response = await fetch(url);\n      const text = await response.text();\n      if (target) target.textContent = text;\n    } catch (error) {\n      if (target) target.textContent = 'Error: ' + error.message;\n    }\n  }\n\n  document.querySelectorAll('[rs-call]').forEach(el => {\n    el.addEventListener('click', () => callElement(el));\n  });\n})();"
+
+START():
+	print_cmd("RSNetwork web demo")
+	wifi.set_route_mode(RSNetwork[ROUTEMODE_SR])
+	wifi.set_route_info(ap_ssid, ap_password)
+	print_cmd("AP: " + wifi.get_own_route_info())
+	print_cmd("IP: " + wifi.get_ip(ap_ssid))
+
+	page.create_server(port_number)
+	page.set_page_content(html_page)
+	page.set_client_script(rsclient_js)
+	page.start_server()
+	print_cmd("Open http://" + wifi.get_ip(ap_ssid) + ":" + str(port_number))
+
+PROCESS(FPS):
+	page.process()
+	if page.get_request_state():
+		v value int = page.request_int_data()
+		page.respond_string_data(str(value) + " + 5 = " + str(value + 5))
 )RESY";
 
 // programs/rssignal_adc_test.resy
@@ -724,7 +813,9 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
     {"programs/rsconvert_test.resy", "rsconvert_test", "rsconvert_test_resy", rsconvert_test_resy},
+    {"programs/rsnetwork_server_test.resy", "rsnetwork_server_test", "rsnetwork_server_test_resy", rsnetwork_server_test_resy},
     {"programs/rsnetwork_test.resy", "rsnetwork_test", "rsnetwork_test_resy", rsnetwork_test_resy},
+    {"programs/rsnetwork_webpage.resy", "rsnetwork_webpage", "rsnetwork_webpage_resy", rsnetwork_webpage_resy},
     {"programs/rssignal_adc_test.resy", "rssignal_adc_test", "rssignal_adc_test_resy", rssignal_adc_test_resy},
     {"programs/rssignal_input_only_error.resy", "rssignal_input_only_error", "rssignal_input_only_error_resy", rssignal_input_only_error_resy},
     {"programs/rssignal_loopback_test.resy", "rssignal_loopback_test", "rssignal_loopback_test_resy", rssignal_loopback_test_resy},
@@ -733,7 +824,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 13;
+constexpr int kResyProgramCount = 15;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {

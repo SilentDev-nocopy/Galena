@@ -10,6 +10,7 @@
 #include "modules/rsbase.hpp"
 #include "modules/rsconvert.hpp"
 #include "modules/rsmath.hpp"
+#include "modules/rsnetwork.hpp"
 #include "modules/rssignal.hpp"
 #include "modules/rssystem.hpp"
 
@@ -26,6 +27,8 @@ inline std::vector<std::shared_ptr<resiris::Module>> make_modules() {
         std::make_shared<resiris::RsConvertModule>(),
         // modules/rsmath.hpp
         std::make_shared<resiris::RsMathModule>(),
+        // modules/rsnetwork.hpp
+        std::make_shared<resiris::RsNetworkModule>(),
         // modules/rssignal.hpp
         std::make_shared<resiris::RsSignalModule>(),
         // modules/rssystem.hpp
@@ -38,10 +41,11 @@ constexpr const char* kModuleSources[] = {
     "modules/rsbase.hpp",
     "modules/rsconvert.hpp",
     "modules/rsmath.hpp",
+    "modules/rsnetwork.hpp",
     "modules/rssignal.hpp",
     "modules/rssystem.hpp",
 };
 
-constexpr int kModuleCount = 5;
+constexpr int kModuleCount = 6;
 
 } // namespace galena_generated

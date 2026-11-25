@@ -10,7 +10,7 @@ designed together. User programs never touch the ESP32 hardware directly.
 ## Where the project stands
 
 The work so far is the language and its runtime. The tokenizer, parser and
-interpreter run on the ESP32, along with five built-in modules. The rest of the
+interpreter run on the ESP32, along with six built-in modules. The rest of the
 plan does not exist yet.
 
 | Piece | State |
@@ -21,6 +21,7 @@ plan does not exist yet.
 | `RSSystem` module — 15 machine-fact functions, 4 portable | implemented |
 | `RSConvert` module — 68 text, number and encoding conversions | implemented |
 | `RSSignal` module — 6 GPIO functions and 26 pin constants | implemented, ESP32 only |
+| `RSNetwork` module — Wi-Fi (ESP32) and HTML server (both targets) | implemented |
 | Build-time embedding of `programs/*.resy` | implemented |
 | Galena System — UI, display, input, storage | not started |
 | Custom hardware | not started |
@@ -102,6 +103,9 @@ count. A failing check stops the program with an error, so a run that ends with
 | Program | Needs wiring | What it checks |
 |---|---|---|
 | `programs/rsconvert_test.resy` | none, also runs on a PC | the portable `RSConvert` functions |
+| `programs/rsnetwork_test.resy` | none, ESP32 only | Wi-Fi constants, route mode, route info, both handlers |
+| `programs/rsnetwork_server_test.resy` | none, also runs on a PC | the portable `RSNetwork` HTML server API |
+| `programs/rsnetwork_webpage.resy` | none, ESP32 only | a basic HTML page that adds 5 to a number |
 | `programs/rssignal_test.resy` | none | GPIO constants, mode switching, output calls, ADC range |
 | `programs/rssignal_loopback_test.resy` | GPIO4 ↔ GPIO5 | real output-to-input digital loopback |
 | `programs/rssignal_adc_test.resy` | GPIO25 ↔ GPIO32 | digital output driving an ADC input |
@@ -110,6 +114,22 @@ count. A failing check stops the program with an error, so a run that ends with
 The negative test is supposed to stop with an error; its header shows the exact
 message to expect. The loopback tests need the listed jumper wire, because there
 is no way to verify a real pad without one.
+
+### ESP32 web demo
+
+`programs/rsnetwork_webpage.resy` is a small end-to-end example. It starts an
+access point named `galena-demo` (password `galena123`) and serves a page on
+port 8080. Build it with that program selected, flash, open the serial monitor
+for the printed IP address, then connect to the network and visit:
+
+```
+http://<printed-ip>:8080/
+```
+
+The page sends the entered number to `/call/add?value=<n>`; the program reads
+it with `request_int_data()` and replies with `str(value) + " + 5 = ..."`.
+The HTML and `/rsclient.js` are embedded as strings in the `.resy` file, since
+the module serves strings and does not read files from the device.
 
 ## The language
 
@@ -162,6 +182,9 @@ The language is also maintained separately at
 | `programs/recursion_depth.resy` | recursion-depth regression test guarding the per-frame stack cost |
 | `programs/rsconvert_test.resy` | portable `RSConvert` self-test |
 | `programs/rssignal_test.resy` | `RSSignal` API and state test for the ESP32 |
+| `programs/rsnetwork_test.resy` | `RSNetwork` Wi-Fi and handler test for the ESP32 |
+| `programs/rsnetwork_server_test.resy` | portable `RSNetwork` HTML server self-test |
+| `programs/rsnetwork_webpage.resy` | ESP32 access point serving a basic web page |
 | `programs/rssignal_loopback_test.resy` | GPIO4 ↔ GPIO5 digital loopback test |
 | `programs/rssignal_adc_test.resy` | GPIO25 → GPIO32 ADC loopback test |
 | `programs/rssignal_input_only_error.resy` | expected-error test: GPIO34 cannot be an output |

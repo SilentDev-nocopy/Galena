@@ -1,9 +1,10 @@
 ## RSNetwork self-test for the ESP32.
 ##
-## This program is EspOnly for now: the RSNetwork module has not been ported into
-## lib/Resiris/modules/ yet, so the host `make test` skips it. Once the module is
-## present, every check prints PASS or FAIL on its own line and a failing check
-## stops the program with an error.
+## The module itself is portable, but these checks call Wi-Fi, which exists only
+## on the device; the host `make test` therefore skips this file. The portable
+## server is covered by programs/rsnetwork_server_test.resy. Every check prints
+## PASS or FAIL on its own line and a failing check stops the program with an
+## error.
 ##
 ## It covers the Wi-Fi API (constants, route mode, route info, speed handler) and
 ## the portable server-handler setup. No external wiring or browser is needed.
