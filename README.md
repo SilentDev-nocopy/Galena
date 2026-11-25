@@ -16,14 +16,14 @@ plan does not exist yet.
 | Piece | State |
 |---|---|
 | Resiris tokenizer, parser, interpreter | implemented, runs on the device |
-| `RSMath` module — 29 math functions, `PI`, `E` | implemented |
-| `RSBase` module — 7 timer functions | implemented |
-| `RSSystem` module — 15 machine-fact functions, 4 portable | implemented |
-| `RSConvert` module — 68 text, number and encoding conversions | implemented |
-| `RSSignal` module — 6 GPIO functions and 26 pin constants | implemented, ESP32 only |
-| `RSNetwork` module — Wi-Fi (ESP32) and HTML server (both targets) | implemented |
+| `RSMath` module - 29 math functions, `PI`, `E` | implemented |
+| `RSBase` module - 7 timer functions | implemented |
+| `RSSystem` module - 15 machine-fact functions, 4 portable | implemented |
+| `RSConvert` module - 68 text, number and encoding conversions | implemented |
+| `RSSignal` module - 6 GPIO functions and 26 pin constants | implemented, ESP32 only |
+| `RSNetwork` module - Wi-Fi (ESP32) and HTML server (both targets) | implemented |
 | Build-time embedding of `programs/*.resy` | implemented |
-| Galena System — UI, display, input, storage | not started |
+| Galena System - UI, display, input, storage | not started |
 | Custom hardware | not started |
 
 Programs are interpreted from source on the ESP32 at boot.
@@ -168,14 +168,14 @@ reaches about five or six levels on an ESP32. That makes Resiris well suited to
 describing what a device does, and unable to express iteration, so anything that
 has to walk a collection, sort, search or parse belongs in a module.
 
-- [lib/Resiris/README.md](lib/Resiris/README.md) — the language itself: what it
+- [lib/Resiris/README.md](lib/Resiris/README.md) - the language itself: what it
   is good at, what it cannot do, and the decisions that make it behave
   differently from C or Python.
-- [lib/Resiris/HOW_TO_USE.md](lib/Resiris/HOW_TO_USE.md) — the full reference,
+- [lib/Resiris/HOW_TO_USE.md](lib/Resiris/HOW_TO_USE.md) - the full reference,
   covering every type and statement, scoping, and the error model.
-- [lib/Resiris/MODULES.md](lib/Resiris/MODULES.md) — index of the built-in
+- [lib/Resiris/MODULES.md](lib/Resiris/MODULES.md) - index of the built-in
   modules, each with its own API reference under `lib/Resiris/modules/`.
-- [lib/Resiris/WRITING_MODULES.md](lib/Resiris/WRITING_MODULES.md) — writing a
+- [lib/Resiris/WRITING_MODULES.md](lib/Resiris/WRITING_MODULES.md) - writing a
   module in C++.
 
 The language is also maintained separately at

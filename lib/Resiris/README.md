@@ -85,7 +85,7 @@ loop.
 That single constraint shapes the language more than anything else, and it is
 worth being blunt about the consequence: iterating a collection, sorting,
 searching, filtering and parsing text cannot be written in Resiris at all. Not
-awkwardly — there is no way to express it. Scripts describe what the device
+awkwardly - there is no way to express it. Scripts describe what the device
 does; anything that needs to walk data lives in a module.
 
 Recursion is the only general-purpose repetition left, and it is shallow. Each

@@ -32,8 +32,8 @@ becomes a module rather than a change to the language.
 
 ## Where the code lives
 
-Everything is split in two folders. `System/` is the language itself — it knows
-nothing about any specific module — and `modules/` is one folder of product
+Everything is split in two folders. `System/` is the language itself - it knows
+nothing about any specific module - and `modules/` is one folder of product
 features, where a new module goes.
 
 | File | Role |
@@ -63,8 +63,8 @@ registered on PC and ESP32 without a separate registry edit. See
 [Registering it](#registering-it) for the source-file requirements.
 
 `RSSystem` is the one to read for a module that needs something the language
-cannot supply: facts about the host. Its two host-measured values — `uptime` and
-`cpu_load` — are read from `platform.hpp` on demand rather than taken as
+cannot supply: facts about the host. Its two host-measured values - `uptime` and
+`cpu_load` - are read from `platform.hpp` on demand rather than taken as
 constructor arguments, and its ESP32 hardware reads sit behind one `#if
 ARDUINO` so the file still compiles for a host.
 
@@ -247,7 +247,7 @@ There are two portable shapes, and `RSSystem` shows the second one. A hook is
 right when the host has to supply something the module cannot compute: text
 output, or the two measurements behind `uptime` and `cpu_load`. A
 `#if defined(ARDUINO)` guard is right when the module reads a fixed piece of
-hardware and nothing else — the ESP32's heap size, the flash chip's capacity. The
+hardware and nothing else - the ESP32's heap size, the flash chip's capacity. The
 whole read then sits behind the guard and returns a flag saying whether it
 happened, so the refusal lives in one place:
 
@@ -488,7 +488,7 @@ void RsSystemModule::on_registered(ModuleRegistry& registry) {
 }
 ```
 
-The override is optional — the base class has an empty one — so a module that
+The override is optional - the base class has an empty one - so a module that
 does not care what else exists says nothing. Host measurements are the other
 kind of thing a module cannot construct, and those come from
 `platform.hpp`, which the runtime fills in once per run:
@@ -579,8 +579,8 @@ The error codes it produces:
 | `MissingModule` | `<include>` named a module that was never registered |
 | `SameModuleMultiCall` | the same module was included twice |
 | `UnknownModuleArgument` | an argument was not a `bool`, `int`, `float` or `string` |
-| — | `module is not included`, when called without `<include>` |
-| — | `unknown module function` |
-| — | `unknown module constant` |
-| — | `module returned an unsupported value` |
-| — | `expected <T>, received <U>`, when a constant's declared type did not match |
+| - | `module is not included`, when called without `<include>` |
+| - | `unknown module function` |
+| - | `unknown module constant` |
+| - | `module returned an unsupported value` |
+| - | `expected <T>, received <U>`, when a constant's declared type did not match |
