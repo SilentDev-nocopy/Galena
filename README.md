@@ -137,7 +137,10 @@ access point named `galena-dash` (password `galena123`) and serves a page that
 polls `/call/status` once a second. The response contains uptime, CPU load and
 speed, heap total/free/minimum, PSRAM, flash reservation, chip revision and the
 registered module list; the client script writes those values into the page.
-Both programs build response strings with `+=`, because a long chain of `+`
+CPU load is drawn as a CSS ring gauge. A button adds bit/kB/MB next to each byte
+value and minutes next to uptime once
+a minute has passed. Both programs build response strings with `+=`,
+because a long chain of `+`
 operators can overflow the ESP32 `loopTask` stack.
 
 ## The language

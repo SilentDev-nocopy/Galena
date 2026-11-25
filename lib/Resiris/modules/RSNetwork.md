@@ -125,5 +125,8 @@ the Resiris project. A complete page using all three is in
 `programs/rsnetwork_server_test.resy` exercises the portable server on a PC.
 `programs/rsnetwork_dashboard.resy` is a live example: it serves a page that
 polls `/call/status` once a second and fills it with real `RSSystem` values.
-A long chain of `+` operators can overflow the ESP32 `loopTask` stack, so these
+The CPU load card draws a CSS ring gauge. Its button adds bit/kB/MB next to each
+byte value and minutes next to uptime after the first minute. A long chain of
+`+` operators can overflow the ESP32
+`loopTask` stack, so these
 programs build response strings with `+=` instead.
