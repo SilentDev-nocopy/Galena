@@ -1,12 +1,14 @@
 # Resiris
 
+<img src="assets/resiris-file-icon.png" alt="Resiris file icon for .resy files" width="96" align="right">
+
 Resiris is the programming language used by [Galena](../../README.md), a small
 programmable computing device. The implementation is portable C++17 with no
 dependencies, so the same source builds for a desktop host as well as for the
 ESP32.
 
 The language is deliberately small. The whole surface is seven types, a handful
-of keywords and five built-in modules, and most of what you might expect to find
+of keywords and six built-in modules, and most of what you might expect to find
 in a scripting language is not there. Knowing what is missing matters more than
 what is there, so that comes first.
 
@@ -87,11 +89,13 @@ awkwardly — there is no way to express it. Scripts describe what the device
 does; anything that needs to walk data lives in a module.
 
 Recursion is the only general-purpose repetition left, and it is shallow. Each
-level costs roughly 1.3 KB of native stack, so on an ESP32 with an 8 KB task
-stack a script manages five or six levels before it runs out. That number is a
-property of the host rather than a rule in the language, and nobody has measured
-the exact ceiling, so treat five as the limit. If you find yourself counting
-recursion, you have reached the edge of what the language is for.
+nested interpreter call costs roughly 1.3 KB of native stack, so on an ESP32
+with an 8 KB task stack a script manages only a few levels. The same applies to
+a long chain of `+` operators, which recurses once per operator, so build longer
+strings with `+=` instead. These are properties of the host rather than rules in
+the language, and the exact ceiling has not been measured: if you find yourself
+counting recursion or operators, you have reached the edge of what the language
+is for.
 
 ## Design decisions that will surprise you
 
@@ -166,7 +170,7 @@ globals rather than a proper lexical closure.
 
 ### Modules never grow the stack
 
-All 29 `RSMath` functions are either an iterative loop or a single libm call, and
+All 40 `RSMath` functions are either an iterative loop or a single libm call, and
 none of them calls back into the interpreter. A math call costs the same small
 amount of stack whatever you pass it, so `factorial(10)` and `factorial(20)` are
 identical in that respect. Math in a script can never be the thing that
