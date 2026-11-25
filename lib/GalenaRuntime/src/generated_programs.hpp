@@ -452,6 +452,96 @@ if failures > 0:
 	v abort int = 1 / 0
 )RESY";
 
+// programs/rsnetwork_dashboard.resy
+constexpr const char* rsnetwork_dashboard_resy =
+R"RESY(## Live ESP32 dashboard served by RSNetwork.
+##
+## The device creates its own Wi-Fi network (AP mode) and serves a page that
+## polls /call/status every second. The poll response is a pipe-separated list
+## of key=value pairs; the small /rsclient.js script writes them into the
+## elements marked with data-field. Everything the page shows comes from real
+## RSSystem calls on the ESP32. On a PC this program cannot run because it calls
+## Wi-Fi, so `make test` skips it.
+
+<include> RSNetwork, RSSystem
+
+c FPS float = 10.0
+c port_number int = 8080
+c ap_ssid string = "galena-dash"
+c ap_password string = "galena123"
+
+v wifi ModuleObject = RSNetwork.wifi()
+v page ModuleObject = RSNetwork.html_server_handler()
+
+## Single quotes inside the HTML and JS keep the Resiris string literals simple.
+## Only the /call/<name>?value=<text> path returns data, so the dashboard uses
+## one poll request and puts every metric into that single response.
+c html_page string = "<!DOCTYPE html>\n<html lang='en'>\n<head>\n  <meta charset='utf-8'>\n  <meta name='viewport' content='width=device-width, initial-scale=1'>\n  <title>ESP32 dashboard</title>\n  <style>\n    body { font-family: system-ui, sans-serif; margin: 1.5rem; background: #101418; color: #e6eef5; }\n    h1 { margin-top: 0; font-size: 1.4rem; }\n    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.75rem; }\n    .card { background: #1b232b; border: 1px solid #2c3945; border-radius: 10px; padding: 0.9rem; }\n    .label { color: #8fa6b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }\n    .value { font-size: 1.25rem; font-variant-numeric: tabular-nums; margin-top: 0.25rem; }\n    .wide { grid-column: 1 / -1; }\n    footer { margin-top: 1rem; color: #8fa6b8; font-size: 0.85rem; }\n  </style>\n</head>\n<body>\n  <h1>ESP32 live dashboard</h1>\n  <div class='grid'>\n    <div class='card'><div class='label'>Uptime</div><div class='value'><span data-field='uptime'>--</span> s</div></div>\n    <div class='card'><div class='label'>CPU load</div><div class='value'><span data-field='cpu_load'>--</span> %</div></div>\n    <div class='card'><div class='label'>CPU speed</div><div class='value'><span data-field='cpu_speed'>--</span> MHz</div></div>\n    <div class='card'><div class='label'>Free heap</div><div class='value'><span data-field='heap_free'>--</span> B</div></div>\n    <div class='card'><div class='label'>Min free heap</div><div class='value'><span data-field='heap_min'>--</span> B</div></div>\n    <div class='card'><div class='label'>Heap total</div><div class='value'><span data-field='heap_total'>--</span> B</div></div>\n    <div class='card'><div class='label'>PSRAM</div><div class='value'><span data-field='psram'>--</span> B</div></div>\n    <div class='card'><div class='label'>Flash used / total</div><div class='value'><span data-field='flash_used'>--</span> / <span data-field='flash_total'>--</span></div></div>\n    <div class='card wide'><div class='label'>Chip</div><div class='value'><span data-field='chip'>--</span> rev <span data-field='chip_revision'>--</span></div></div>\n    <div class='card wide'><div class='label'>Modules</div><div class='value'><span data-field='modules'>--</span></div></div>\n  </div>\n  <footer>Updated <span data-field='updated'>connecting...</span></footer>\n  <script src='/rsclient.js'></script>\n</body>\n</html>"
+
+## Polling client. It never uses a newline escape inside a JS string literal:
+## the response is split on '|', so the Resiris \n escapes only create real
+## line breaks between JS statements.
+c rsclient_js string = "(() => {\n  const statusUrl = '/call/status?value=tick';\n  let busy = false;\n\n  function stamp(text) {\n    const el = document.querySelector('[data-field=updated]');\n    if (el) el.textContent = text;\n  }\n\n  async function refresh() {\n    if (busy) return;\n    busy = true;\n    try {\n      const response = await fetch(statusUrl, { cache: 'no-store' });\n      const text = await response.text();\n      const data = {};\n      text.split('|').forEach(part => {\n        const idx = part.indexOf('=');\n        if (idx > 0) data[part.slice(0, idx)] = part.slice(idx + 1);\n      });\n      document.querySelectorAll('[data-field]').forEach(el => {\n        const key = el.getAttribute('data-field');\n        if (data[key] !== undefined) el.textContent = data[key];\n      });\n      stamp(new Date().toLocaleTimeString());\n    } catch (error) {\n      stamp('offline: ' + error.message);\n    } finally {\n      busy = false;\n    }\n  }\n\n  refresh();\n  setInterval(refresh, 1000);\n})();"
+
+## One poll returns every metric. Strings are built with += because a long
+## chain of + operators overflows the ESP32 loopTask stack in the interpreter.
+fn read_status():
+	v body string = ""
+	body += "uptime="
+	body += str(RSSystem.uptime())
+	body += "|heap_free="
+	body += str(RSSystem.memory_free())
+	body += "|heap_min="
+	body += str(RSSystem.memory_min_free())
+	body += "|heap_total="
+	body += str(RSSystem.memory_total())
+	body += "|cpu_load="
+	body += str(RSSystem.cpu_load())
+	body += "|cpu_speed="
+	body += str(RSSystem.cpu_speed())
+	body += "|chip="
+	body += RSSystem.chip_model()
+	body += "|chip_revision="
+	body += str(RSSystem.chip_revision())
+	body += "|cores="
+	body += str(RSSystem.cpu_cores())
+	body += "|psram="
+	body += str(RSSystem.psram_size())
+	body += "|flash_used="
+	body += str(RSSystem.flash_used())
+	body += "|flash_total="
+	body += str(RSSystem.flash_total())
+	body += "|modules="
+	body += RSSystem.modules()
+	return body
+
+START():
+	print_cmd("ESP32 live dashboard")
+	print_cmd("=== hardware report ===")
+	print_cmd(RSSystem.report())
+
+	wifi.set_route_mode(RSNetwork[ROUTEMODE_SR])
+	wifi.set_route_info(ap_ssid, ap_password)
+	print_cmd("AP: " + wifi.get_own_route_info())
+	print_cmd("IP: " + wifi.get_ip(ap_ssid))
+
+	page.create_server(port_number)
+	page.set_page_content(html_page)
+	page.set_client_script(rsclient_js)
+	page.start_server()
+	v url string = "Dashboard: http://"
+	url += wifi.get_ip(ap_ssid)
+	url += ":"
+	url += str(port_number)
+	print_cmd(url)
+
+PROCESS(FPS):
+	page.process()
+	if page.get_request_state():
+		v tick string = page.request_string_data()
+		page.respond_string_data(read_status())
+)RESY";
+
 // programs/rsnetwork_server_test.resy
 constexpr const char* rsnetwork_server_test_resy =
 R"RESY(## RSNetwork HTML server self-test.
@@ -860,6 +950,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
     {"programs/rsconvert_test.resy", "rsconvert_test", "rsconvert_test_resy", rsconvert_test_resy},
+    {"programs/rsnetwork_dashboard.resy", "rsnetwork_dashboard", "rsnetwork_dashboard_resy", rsnetwork_dashboard_resy},
     {"programs/rsnetwork_server_test.resy", "rsnetwork_server_test", "rsnetwork_server_test_resy", rsnetwork_server_test_resy},
     {"programs/rsnetwork_test.resy", "rsnetwork_test", "rsnetwork_test_resy", rsnetwork_test_resy},
     {"programs/rsnetwork_webpage.resy", "rsnetwork_webpage", "rsnetwork_webpage_resy", rsnetwork_webpage_resy},
@@ -871,7 +962,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 15;
+constexpr int kResyProgramCount = 16;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {

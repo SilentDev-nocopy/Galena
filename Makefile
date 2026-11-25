@@ -40,11 +40,11 @@ MODULE_HEADERS := $(wildcard $(MODULES_DIR)/*.hpp)
 # host. Keep the list in sync with the modules that declare ModuleTarget::EspOnly.
 ESP_ONLY_MODULES := RSSignal
 
-# A portable module can still have device-only programs. RSNetwork's Wi-Fi test
-# and the ESP32 web demo are two: the module loads on a PC, but Wi-Fi has no host
-# implementation. Its portable server is covered by
+# A portable module can still have device-only programs. RSNetwork's Wi-Fi test,
+# the web demo and the live dashboard are three: the module loads on a PC, but
+# Wi-Fi has no host implementation. Its portable server is covered by
 # programs/rsnetwork_server_test.resy.
-HOST_SKIP_PROGRAMS := programs/rsnetwork_test.resy programs/rsnetwork_webpage.resy
+HOST_SKIP_PROGRAMS := programs/rsnetwork_test.resy programs/rsnetwork_webpage.resy programs/rsnetwork_dashboard.resy
 
 .PHONY: all run embedded test generate clean
 

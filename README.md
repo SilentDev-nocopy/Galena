@@ -106,6 +106,7 @@ count. A failing check stops the program with an error, so a run that ends with
 | `programs/rsnetwork_test.resy` | none, ESP32 only | Wi-Fi constants, route mode, route info, both handlers |
 | `programs/rsnetwork_server_test.resy` | none, also runs on a PC | the portable `RSNetwork` HTML server API |
 | `programs/rsnetwork_webpage.resy` | none, ESP32 only | a basic HTML page that adds 5 to a number |
+| `programs/rsnetwork_dashboard.resy` | none, ESP32 only | a live dashboard of `RSSystem` values over HTTP |
 | `programs/rssignal_test.resy` | none | GPIO constants, mode switching, output calls, ADC range |
 | `programs/rssignal_loopback_test.resy` | GPIO4 ↔ GPIO5 | real output-to-input digital loopback |
 | `programs/rssignal_adc_test.resy` | GPIO25 ↔ GPIO32 | digital output driving an ADC input |
@@ -130,6 +131,14 @@ The page sends the entered number to `/call/add?value=<n>`; the program reads
 it with `request_int_data()` and replies with `str(value) + " + 5 = ..."`.
 The HTML and `/rsclient.js` are embedded as strings in the `.resy` file, since
 the module serves strings and does not read files from the device.
+
+`programs/rsnetwork_dashboard.resy` is the same idea taken further: it starts an
+access point named `galena-dash` (password `galena123`) and serves a page that
+polls `/call/status` once a second. The response contains uptime, CPU load and
+speed, heap total/free/minimum, PSRAM, flash reservation, chip revision and the
+registered module list; the client script writes those values into the page.
+Both programs build response strings with `+=`, because a long chain of `+`
+operators can overflow the ESP32 `loopTask` stack.
 
 ## The language
 
@@ -185,6 +194,7 @@ The language is also maintained separately at
 | `programs/rsnetwork_test.resy` | `RSNetwork` Wi-Fi and handler test for the ESP32 |
 | `programs/rsnetwork_server_test.resy` | portable `RSNetwork` HTML server self-test |
 | `programs/rsnetwork_webpage.resy` | ESP32 access point serving a basic web page |
+| `programs/rsnetwork_dashboard.resy` | ESP32 access point serving a live RSSystem dashboard |
 | `programs/rssignal_loopback_test.resy` | GPIO4 ↔ GPIO5 digital loopback test |
 | `programs/rssignal_adc_test.resy` | GPIO25 → GPIO32 ADC loopback test |
 | `programs/rssignal_input_only_error.resy` | expected-error test: GPIO34 cannot be an output |

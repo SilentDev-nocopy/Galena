@@ -123,3 +123,7 @@ the Resiris project. A complete page using all three is in
 `galena-demo` with password `galena123` and serves the page on port 8080.
 `programs/rsnetwork_test.resy` exercises the Wi-Fi API on the device;
 `programs/rsnetwork_server_test.resy` exercises the portable server on a PC.
+`programs/rsnetwork_dashboard.resy` is a live example: it serves a page that
+polls `/call/status` once a second and fills it with real `RSSystem` values.
+A long chain of `+` operators can overflow the ESP32 `loopTask` stack, so these
+programs build response strings with `+=` instead.
