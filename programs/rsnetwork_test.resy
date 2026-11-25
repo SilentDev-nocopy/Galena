@@ -1,0 +1,55 @@
+## RSNetwork self-test for the ESP32.
+##
+## This program is EspOnly for now: the RSNetwork module has not been ported into
+## lib/Resiris/modules/ yet, so the host `make test` skips it. Once the module is
+## present, every check prints PASS or FAIL on its own line and a failing check
+## stops the program with an error.
+##
+## It covers the Wi-Fi API (constants, route mode, route info, speed handler) and
+## the portable server-handler setup. No external wiring or browser is needed.
+
+<include> RSNetwork
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+## Route mode constants are exported strings.
+check("CRE constant", RSNetwork[ROUTEMODE_CRE] == "CRE")
+check("SR constant", RSNetwork[ROUTEMODE_SR] == "SR")
+check("MB constant", RSNetwork[ROUTEMODE_MB] == "MB")
+
+## The Wi-Fi handle is stored, then its methods are called on that handle.
+v wifi ModuleObject = RSNetwork.wifi()
+check("wifi handle type", wifi.type() == "ModuleObject")
+check("set CRE mode", wifi.set_route_mode(RSNetwork[ROUTEMODE_CRE]) == true)
+check("CRE mode stored", wifi.get_route_mode() == RSNetwork[ROUTEMODE_CRE])
+v networks string = wifi.get_all_networks()
+check("network list is string", networks.type() == "string")
+
+## Route info is only writable in SR mode and comes back with a masked password.
+check("set SR mode", wifi.set_route_mode(RSNetwork[ROUTEMODE_SR]) == true)
+check("set route info", wifi.set_route_info("rsnetwork-test", "secret-pw") == true)
+v route_info string = wifi.get_own_route_info()
+check("route info is string", route_info.type() == "string")
+print_cmd("route info: " + route_info)
+
+## The speed handler is created once and read every frame in a real program.
+v speed ModuleObject = RSNetwork.create_wifi_data_process_handler()
+check("speed handle type", speed.type() == "ModuleObject")
+
+## The HTML server handler exists on both targets; only its socket is target-specific.
+v page ModuleObject = RSNetwork.html_server_handler()
+check("server handle type", page.type() == "ModuleObject")
+check("create server", page.create_server(8080) == true)
+check("set page content", page.set_page_content("<h1>RSNetwork</h1>") == true)
+check("set client script", page.set_client_script("// rsclient.js") == true)
+
+print_cmd("RSNetwork failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0

@@ -38,7 +38,9 @@ MODULE_HEADERS := $(wildcard $(MODULES_DIR)/*.hpp)
 
 # Programs that include one of these modules need the ESP32 and are skipped by
 # `make test` on the host. Keep the list in sync with the EspOnly modules.
-ESP_ONLY_MODULES := RSSignal
+# RSNetwork is listed until its ESP32 implementation is ported into
+# lib/Resiris/modules/; its self-test covers the Wi-Fi API.
+ESP_ONLY_MODULES := RSSignal RSNetwork
 
 .PHONY: all run embedded test generate clean
 

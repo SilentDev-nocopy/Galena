@@ -452,6 +452,65 @@ if failures > 0:
 	v abort int = 1 / 0
 )RESY";
 
+// programs/rsnetwork_test.resy
+constexpr const char* rsnetwork_test_resy =
+R"RESY(## RSNetwork self-test for the ESP32.
+##
+## This program is EspOnly for now: the RSNetwork module has not been ported into
+## lib/Resiris/modules/ yet, so the host `make test` skips it. Once the module is
+## present, every check prints PASS or FAIL on its own line and a failing check
+## stops the program with an error.
+##
+## It covers the Wi-Fi API (constants, route mode, route info, speed handler) and
+## the portable server-handler setup. No external wiring or browser is needed.
+
+<include> RSNetwork
+
+v failures int = 0
+
+fn check(name, ok):
+	if ok:
+		print_cmd("PASS " + name)
+	else:
+		print_cmd("FAIL " + name)
+		failures += 1
+
+## Route mode constants are exported strings.
+check("CRE constant", RSNetwork[ROUTEMODE_CRE] == "CRE")
+check("SR constant", RSNetwork[ROUTEMODE_SR] == "SR")
+check("MB constant", RSNetwork[ROUTEMODE_MB] == "MB")
+
+## The Wi-Fi handle is stored, then its methods are called on that handle.
+v wifi ModuleObject = RSNetwork.wifi()
+check("wifi handle type", wifi.type() == "ModuleObject")
+check("set CRE mode", wifi.set_route_mode(RSNetwork[ROUTEMODE_CRE]) == true)
+check("CRE mode stored", wifi.get_route_mode() == RSNetwork[ROUTEMODE_CRE])
+v networks string = wifi.get_all_networks()
+check("network list is string", networks.type() == "string")
+
+## Route info is only writable in SR mode and comes back with a masked password.
+check("set SR mode", wifi.set_route_mode(RSNetwork[ROUTEMODE_SR]) == true)
+check("set route info", wifi.set_route_info("rsnetwork-test", "secret-pw") == true)
+v route_info string = wifi.get_own_route_info()
+check("route info is string", route_info.type() == "string")
+print_cmd("route info: " + route_info)
+
+## The speed handler is created once and read every frame in a real program.
+v speed ModuleObject = RSNetwork.create_wifi_data_process_handler()
+check("speed handle type", speed.type() == "ModuleObject")
+
+## The HTML server handler exists on both targets; only its socket is target-specific.
+v page ModuleObject = RSNetwork.html_server_handler()
+check("server handle type", page.type() == "ModuleObject")
+check("create server", page.create_server(8080) == true)
+check("set page content", page.set_page_content("<h1>RSNetwork</h1>") == true)
+check("set client script", page.set_client_script("// rsclient.js") == true)
+
+print_cmd("RSNetwork failures: " + str(failures))
+if failures > 0:
+	v abort int = 1 / 0
+)RESY";
+
 // programs/rssignal_adc_test.resy
 constexpr const char* rssignal_adc_test_resy =
 R"RESY(## RSSignal ADC loopback test for the ESP32.
@@ -665,6 +724,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/features.resy", "features", "features_resy", features_resy},
     {"programs/recursion_depth.resy", "recursion_depth", "recursion_depth_resy", recursion_depth_resy},
     {"programs/rsconvert_test.resy", "rsconvert_test", "rsconvert_test_resy", rsconvert_test_resy},
+    {"programs/rsnetwork_test.resy", "rsnetwork_test", "rsnetwork_test_resy", rsnetwork_test_resy},
     {"programs/rssignal_adc_test.resy", "rssignal_adc_test", "rssignal_adc_test_resy", rssignal_adc_test_resy},
     {"programs/rssignal_input_only_error.resy", "rssignal_input_only_error", "rssignal_input_only_error_resy", rssignal_input_only_error_resy},
     {"programs/rssignal_loopback_test.resy", "rssignal_loopback_test", "rssignal_loopback_test_resy", rssignal_loopback_test_resy},
@@ -673,7 +733,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 12;
+constexpr int kResyProgramCount = 13;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {
