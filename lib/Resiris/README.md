@@ -197,7 +197,7 @@ can tell a syntax error from a type error or a module error.
 Absent on purpose or for now: no `!` operator, no power operator, no bitwise
 operators, no containers, no `null`, no comment syntax other than `##`.
 
-Version `1.9-cpp`, in `System/version.hpp`.
+Version `1.10-cpp`, in `System/version.hpp`.
 
 ## More
 

@@ -23,7 +23,7 @@ namespace {
 constexpr int kProgramFailed = 1;
 constexpr int kUsageError = 2;
 
-constexpr const char* kVersion = "1.9-cpp";
+constexpr const char* kVersion = "1.10-cpp";
 constexpr const char* kDefaultMainCpp = "esp32/main.cpp";
 
 // Reads the `const char* source = <identifier>;` line out of esp32/main.cpp.
