@@ -84,6 +84,7 @@ START():
 
 PROCESS(FPS):
 	page.process()
+	print_cmd(str(RSSystem.uptime()) + " s uptime")
 	if page.get_request_state():
 		v tick string = page.request_string_data()
 		page.respond_string_data(read_status())

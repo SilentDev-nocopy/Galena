@@ -202,6 +202,7 @@ The language is also maintained separately at
 | `programs/rssignal_adc_test.resy` | GPIO25 → GPIO32 ADC loopback test |
 | `programs/rssignal_input_only_error.resy` | expected-error test: GPIO34 cannot be an output |
 | `programs/esp32_load_test.resy` | sustained interpreter CPU load with periodic CPU and heap readings |
+| `programs/accelerating_blink.resy` | GPIO25 LED blinking that gets 20% faster after each toggle, down to a 50 ms interval |
 
 ## Architecture
 

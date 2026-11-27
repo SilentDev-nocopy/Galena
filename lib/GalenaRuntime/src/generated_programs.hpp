@@ -5,6 +5,50 @@
 
 namespace resiris_programs {
 
+// programs/accelerating_blink.resy
+constexpr const char* accelerating_blink_resy =
+R"RESY(<include> RSSignal, RSBase, RSMath
+
+## Accelerating LED blink. The half-period shrinks by 20% after every
+## toggle until it reaches 0.05 s, then stays there at full speed.
+## GPIO25 matches programs/blinking.resy.
+
+c FPS float = 50.0
+
+v pin int = RSSignal[GENERAL_DIGITAL_GPIO25]
+v timer ModuleObject = RSBase.await()
+
+v delay float = 1.0
+v min_delay float = 0.05
+v slowdown float = 0.8
+
+v signal_on bool = false
+v blinks int = 0
+
+fn toggle_signal():
+	if signal_on:
+		RSSignal.stop_signal(pin)
+		signal_on = false
+	else:
+		RSSignal.send_signal(pin)
+		signal_on = true
+	blinks += 1
+	if delay > min_delay:
+		delay = delay * slowdown
+		if delay < min_delay:
+			delay = min_delay
+	print_cmd("blink " + str(blinks) + ": " + str(RSMath.round(delay * 1000.0)) + " ms")
+	timer.set_timer(delay)
+
+START():
+	RSSignal.set_signal_mode(pin, true)
+	timer.on_timeout("toggle_signal")
+	timer.set_timer(delay)
+
+PROCESS(FPS):
+	timer.process()
+)RESY";
+
 // programs/blink_and_systeminfo.resy
 constexpr const char* blink_and_systeminfo_resy =
 R"RESY(<include> RSSignal, RSBase, RSSystem
@@ -540,6 +584,7 @@ START():
 
 PROCESS(FPS):
 	page.process()
+	print_cmd(str(RSSystem.uptime()) + " s uptime")
 	if page.get_request_state():
 		v tick string = page.request_string_data()
 		page.respond_string_data(read_status())
@@ -947,6 +992,7 @@ struct ResyProgram {
 };
 
 constexpr ResyProgram kResyPrograms[] = {
+    {"programs/accelerating_blink.resy", "accelerating_blink", "accelerating_blink_resy", accelerating_blink_resy},
     {"programs/blink_and_systeminfo.resy", "blink_and_systeminfo", "blink_and_systeminfo_resy", blink_and_systeminfo_resy},
     {"programs/blinking.resy", "blinking", "blinking_resy", blinking_resy},
     {"programs/esp32_load_test.resy", "esp32_load_test", "esp32_load_test_resy", esp32_load_test_resy},
@@ -965,7 +1011,7 @@ constexpr ResyProgram kResyPrograms[] = {
     {"programs/test.resy", "test", "test_resy", test_resy},
 };
 
-constexpr int kResyProgramCount = 16;
+constexpr int kResyProgramCount = 17;
 
 // Returns the .resy file name owning `source`, or nullptr.
 inline const char* resy_program_name(const char* source) {
